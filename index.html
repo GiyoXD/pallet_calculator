@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pallet Weight Calculator</title>
+    <style>
+        /* --- General Body & Font Styling --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+            background-color: #f0f2f6;
+            color: #1a1a1a;
+            margin: 0;
+            padding: 1rem; /* Adjusted padding for mobile */
+        }
+
+        /* --- Main App Container --- */
+        .container {
+            max-width: 800px;
+            margin: auto;
+            display: grid;
+            gap: 1rem;
+        }
+
+        h1 {
+            color: #0d1b2a;
+            text-align: center;
+            font-size: 1.75rem; /* Slightly smaller for mobile */
+        }
+        
+        p.subtitle {
+            text-align: center;
+            margin-top: -0.75rem;
+            color: #555;
+            margin-bottom: 1rem;
+        }
+
+        /* --- Card Styling for Sections --- */
+        .card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #0d1b2a;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* --- Sticky Summary Header --- */
+        .sticky-summary {
+            position: sticky;
+            top: 1rem;
+            z-index: 1000;
+        }
+        
+        /* --- Summary Metrics Grid --- */
+        .metrics-grid {
+            display: grid;
+            /* 2 columns on mobile, 4 on larger screens */
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+        .metric {
+            text-align: center;
+            padding: 0.25rem;
+        }
+        .metric .label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+        .metric .value {
+            font-size: 1.75rem; /* Larger, easier to read value */
+            font-weight: 700;
+            color: #0d1b2a;
+        }
+        
+        /* --- Dynamic Status Message --- */
+        .status-message {
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .status-success { background-color: #c8e6c9; color: #1b5e20; } /* Green */
+        .status-warning { background-color: #fff9c4; color: #f57f17; } /* Yellow */
+        .status-error   { background-color: #ffcdd2; color: #b71c1c; } /* Red */
+
+        /* --- Input Fields & Buttons --- */
+        .form-grid {
+            display: grid;
+            /* Stacks to 1 column on mobile */
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+        
+        .input-group input {
+            padding: 0.8rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            width: 100%; /* Ensure inputs use full width */
+            box-sizing: border-box; /* Important for padding and border */
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+        }
+
+        #pallet-inputs-grid {
+            display: grid;
+            /* 2 columns on mobile, more on larger screens */
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        
+        button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 1rem; /* Larger padding for easy tapping */
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            margin-top: 1rem;
+            width: 100%;
+        }
+        
+        button:hover {
+            background-color: #c82333;
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        /* --- MEDIA QUERIES FOR RESPONSIVENESS --- */
+        /* For tablets and desktops (screens wider than 600px) */
+        @media (min-width: 600px) {
+            body {
+                padding: 1.5rem;
+            }
+            .metrics-grid {
+                grid-template-columns: repeat(4, 1fr); /* 4 columns for summary */
+            }
+            .form-grid {
+                grid-template-columns: 1fr 1fr; /* 2 columns for config */
+            }
+            #pallet-inputs-grid {
+                grid-template-columns: repeat(3, 1fr); /* 3 columns for pallets */
+            }
+        }
+        
+        /* For larger desktops */
+        @media (min-width: 768px) {
+            #pallet-inputs-grid {
+                grid-template-columns: repeat(4, 1fr); /* 4 columns for pallets */
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div>
+            <h1>Pallet Calculator</h1>
+            <p class="subtitle">Real-time weight suggestions for your shipment.</p>
+        </div>
+
+        <div id="summary-card" class="card sticky-summary">
+            <div id="status-message" class="status-message"></div>
+            <div class="metrics-grid">
+                <div class="metric">
+                    <div class="label">Total Loaded</div>
+                    <div id="total-weight" class="value">0</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Remaining</div>
+                    <div id="remaining-weight" class="value">0</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Ideal Avg.</div>
+                    <div id="ideal-average" class="value">0</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Suggested Next</div>
+                    <div id="suggested-weight" class="value">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Configuration</h2>
+            <div class="form-grid">
+                <div class="input-group">
+                    <label for="max-weight">Max Gross Weight (KG)</label>
+                    <input type="number" id="max-weight" value="25000" step="1000">
+                </div>
+                <div class="input-group">
+                    <label for="pallet-count">Total Pallets</label>
+                    <input type="number" id="pallet-count" value="12" min="1" step="1">
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Pallet Weights (KG)</h2>
+            <div id="pallet-inputs-grid">
+                </div>
+            <button id="reset-button">Reset All Weights</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const maxWeightInput = document.getElementById('max-weight');
+            const palletCountInput = document.getElementById('pallet-count');
+            const palletInputsContainer = document.getElementById('pallet-inputs-grid');
+            const resetButton = document.getElementById('reset-button');
+            
+            const totalWeightEl = document.getElementById('total-weight');
+            const remainingWeightEl = document.getElementById('remaining-weight');
+            const idealAverageEl = document.getElementById('ideal-average');
+            const suggestedWeightEl = document.getElementById('suggested-weight');
+            const statusMessageEl = document.getElementById('status-message');
+
+            function generatePalletInputs() {
+                const existingInputs = document.querySelectorAll('.pallet-weight-input');
+                const existingValues = Array.from(existingInputs).map(input => input.value);
+                
+                palletInputsContainer.innerHTML = '';
+                
+                const newCount = parseInt(palletCountInput.value) || 0;
+
+                for (let i = 0; i < newCount; i++) {
+                    const inputGroup = document.createElement('div');
+                    inputGroup.className = 'input-group';
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = `pallet-${i}`;
+                    label.textContent = `Pallet ${i + 1}`;
+                    
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.id = `pallet-${i}`;
+                    input.className = 'pallet-weight-input';
+                    input.min = '0';
+                    input.step = '50';
+                    input.placeholder = "0";
+                    
+                    if (existingValues[i] !== undefined) {
+                        input.value = existingValues[i];
+                    }
+                    
+                    input.addEventListener('input', updateCalculations);
+                    
+                    inputGroup.appendChild(label);
+                    inputGroup.appendChild(input);
+                    palletInputsContainer.appendChild(inputGroup);
+                }
+            }
+
+            function updateCalculations() {
+                const maxWeight = parseFloat(maxWeightInput.value) || 0;
+                const palletCount = parseInt(palletCountInput.value) || 0;
+                
+                const palletWeightInputs = document.querySelectorAll('.pallet-weight-input');
+                const weights = Array.from(palletWeightInputs).map(input => parseFloat(input.value) || 0);
+
+                const currentTotalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+                const palletsWithWeight = weights.filter(w => w > 0).length;
+                const remainingWeight = maxWeight - currentTotalWeight;
+                const remainingPallets = palletCount - palletsWithWeight;
+
+                const idealAverage = palletCount > 0 ? maxWeight / palletCount : 0;
+                const suggestedWeight = remainingPallets > 0 ? remainingWeight / remainingPallets : 0;
+
+                const formatNumber = (num) => Math.round(num).toLocaleString('en-US');
+
+                totalWeightEl.textContent = formatNumber(currentTotalWeight);
+                remainingWeightEl.textContent = formatNumber(remainingWeight);
+                idealAverageEl.textContent = formatNumber(idealAverage);
+                suggestedWeightEl.textContent = formatNumber(suggestedWeight);
+                
+                statusMessageEl.classList.remove('status-success', 'status-warning', 'status-error');
+                if (currentTotalWeight > maxWeight) {
+                    statusMessageEl.classList.add('status-error');
+                    statusMessageEl.textContent = `🚨 OVER LIMIT: ${formatNumber(currentTotalWeight - maxWeight)} KG`;
+                } else if (currentTotalWeight > maxWeight * 0.95) {
+                    statusMessageEl.classList.add('status-warning');
+                    statusMessageEl.textContent = `⚠️ Approaching max weight...`;
+                } else {
+                    statusMessageEl.classList.add('status-success');
+                    statusMessageEl.textContent = `✅ Looking Good`;
+                }
+            }
+
+            // --- EVENT LISTENERS ---
+            
+            // For Max Weight, update instantly on every keystroke
+            maxWeightInput.addEventListener('input', updateCalculations);
+            
+            // --- THIS IS THE KEY CHANGE ---
+            // For Total Pallets, only update after the user finishes editing (clicks away)
+            palletCountInput.addEventListener('change', () => {
+                generatePalletInputs();
+                updateCalculations();
+            });
+            
+            resetButton.addEventListener('click', () => {
+                const palletWeightInputs = document.querySelectorAll('.pallet-weight-input');
+                palletWeightInputs.forEach(input => input.value = '');
+                updateCalculations();
+            });
+
+            // --- INITIALIZE THE APP ---
+            generatePalletInputs();
+            updateCalculations();
+        });
+    </script>
+</body>
+</html>
