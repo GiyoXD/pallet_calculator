@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pallet Weight Calculator</title>
+    <title>Pallet Weight Calculator & Exporter</title>
+    <!-- Replaced SheetJS with ExcelJS and FileSaver for styling support -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
         /* --- General Body & Font Styling --- */
         body {
@@ -11,26 +14,29 @@
             background-color: #f0f2f6;
             color: #1a1a1a;
             margin: 0;
-            padding: 1rem; /* Adjusted padding for mobile */
+            padding: 1rem;
         }
 
         /* --- Main App Container --- */
         .container {
-            max-width: 800px;
+            max-width: 1100px;
             margin: auto;
             display: grid;
-            gap: 1rem;
+            gap: 1.5rem;
+        }
+
+        h1, h2 {
+            color: #0d1b2a;
         }
 
         h1 {
-            color: #0d1b2a;
             text-align: center;
-            font-size: 1.75rem; /* Slightly smaller for mobile */
+            font-size: 2rem;
         }
         
         p.subtitle {
             text-align: center;
-            margin-top: -0.75rem;
+            margin-top: -1rem;
             color: #555;
             margin-bottom: 1rem;
         }
@@ -38,17 +44,16 @@
         /* --- Card Styling for Sections --- */
         .card {
             background-color: #ffffff;
-            border-radius: 12px;
-            padding: 1rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.07);
         }
 
         h2 {
             margin-top: 0;
-            color: #0d1b2a;
-            border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 0.5rem;
-            margin-bottom: 1rem;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1.5rem;
         }
 
         /* --- Sticky Summary Header --- */
@@ -61,22 +66,23 @@
         /* --- Summary Metrics Grid --- */
         .metrics-grid {
             display: grid;
-            /* 2 columns on mobile, 4 on larger screens */
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.75rem;
+            grid-template-columns: 1fr;
+            gap: 1rem;
         }
         .metric {
             text-align: center;
-            padding: 0.25rem;
+            padding: 0.5rem;
+            background-color: #f8f9fa;
+            border-radius: 10px;
         }
         .metric .label {
-            font-size: 0.8rem;
-            font-weight: 500;
-            color: #666;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #495057;
             margin-bottom: 0.25rem;
         }
         .metric .value {
-            font-size: 1.75rem; /* Larger, easier to read value */
+            font-size: 1.85rem;
             font-weight: 700;
             color: #0d1b2a;
         }
@@ -90,15 +96,15 @@
             font-size: 1rem;
             margin-bottom: 1rem;
             transition: background-color 0.3s, color 0.3s;
+            min-height: 1.2em;
         }
-        .status-success { background-color: #c8e6c9; color: #1b5e20; } /* Green */
-        .status-warning { background-color: #fff9c4; color: #f57f17; } /* Yellow */
-        .status-error   { background-color: #ffcdd2; color: #b71c1c; } /* Red */
+        .status-success { background-color: #c8e6c9; color: #1b5e20; }
+        .status-warning { background-color: #fff9c4; color: #f57f17; }
+        .status-error   { background-color: #ffcdd2; color: #b71c1c; }
 
         /* --- Input Fields & Buttons --- */
         .form-grid {
             display: grid;
-            /* Stacks to 1 column on mobile */
             grid-template-columns: 1fr;
             gap: 1rem;
         }
@@ -116,12 +122,12 @@
         
         .input-group input {
             padding: 0.8rem;
-            border: 1px solid #ccc;
+            border: 1px solid #ced4da;
             border-radius: 8px;
             font-size: 1rem;
             font-weight: 500;
-            width: 100%; /* Ensure inputs use full width */
-            box-sizing: border-box; /* Important for padding and border */
+            width: 100%;
+            box-sizing: border-box;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
@@ -133,81 +139,167 @@
 
         #pallet-inputs-grid {
             display: grid;
-            /* 2 columns on mobile, more on larger screens */
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .pallet-card {
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .pallet-card h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+        }
+        
+        .pallet-input-fields {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 1rem;
         }
         
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
         button {
-            background-color: #dc3545;
             color: white;
             border: none;
-            padding: 1rem; /* Larger padding for easy tapping */
+            padding: 1rem;
             font-size: 1rem;
             font-weight: 600;
             border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-            margin-top: 1rem;
+            transition: background-color 0.2s, transform 0.1s, opacity 0.2s;
             width: 100%;
         }
-        
-        button:hover {
-            background-color: #c82333;
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
         }
+
+        #export-button { background-color: #28a745; }
+        #export-button:hover:not(:disabled) { background-color: #218838; }
+
+        #reset-button { background-color: #dc3545; }
+        #reset-button:hover:not(:disabled) { background-color: #c82333; }
+        
+        #archive-button { background-color: #007bff; }
+        #archive-button:hover:not(:disabled) { background-color: #0056b3; }
         
         button:active {
             transform: scale(0.98);
         }
-        
-        /* --- MEDIA QUERIES FOR RESPONSIVENESS --- */
-        /* For tablets and desktops (screens wider than 600px) */
-        @media (min-width: 600px) {
-            body {
-                padding: 1.5rem;
-            }
-            .metrics-grid {
-                grid-template-columns: repeat(4, 1fr); /* 4 columns for summary */
-            }
-            .form-grid {
-                grid-template-columns: 1fr 1fr; /* 2 columns for config */
-            }
-            #pallet-inputs-grid {
-                grid-template-columns: repeat(3, 1fr); /* 3 columns for pallets */
-            }
+
+        .chunk-navigation {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
         }
-        
-        /* For larger desktops */
-        @media (min-width: 768px) {
-            #pallet-inputs-grid {
-                grid-template-columns: repeat(4, 1fr); /* 4 columns for pallets */
-            }
+        #chunk-status {
+            font-weight: 600;
+            font-size: 1.1rem;
+            padding: 0.5rem 1rem;
+            background-color: #e9ecef;
+            border-radius: 8px;
         }
 
+
+        /* --- Confirmation Modal --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal-overlay.visible {
+            visibility: visible;
+            opacity: 1;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .modal-buttons button {
+            width: 120px;
+        }
+        #confirm-reset-btn { background-color: #dc3545; }
+        #cancel-reset-btn { background-color: #6c757d; }
+        
+        /* --- MEDIA QUERIES FOR RESPONSIVENESS --- */
+        @media (min-width: 600px) {
+            .metrics-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            #pallet-inputs-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (min-width: 1100px) {
+            #pallet-inputs-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
     </style>
 </head>
 <body>
-
     <div class="container">
         <div>
             <h1>Pallet Calculator</h1>
-            <p class="subtitle">Real-time weight suggestions for your shipment.</p>
+            <p class="subtitle">Real-time weight suggestions and XLSX exporter.</p>
+        </div>
+
+        <div class="card">
+            <h2>Chunk Management</h2>
+            <div class="chunk-navigation">
+                <button id="prev-chunk-btn">&larr; Previous</button>
+                <span id="chunk-status">Chunk 1</span>
+                <button id="next-chunk-btn">Next &rarr;</button>
+            </div>
+             <button id="archive-button">Archive Chunk & Start New</button>
         </div>
 
         <div id="summary-card" class="card sticky-summary">
             <div id="status-message" class="status-message"></div>
             <div class="metrics-grid">
                 <div class="metric">
-                    <div class="label">Total Loaded</div>
-                    <div id="total-weight" class="value">0</div>
+                    <div class="label">Total Gross Wt.</div>
+                    <div id="total-gross-weight" class="value">0</div>
                 </div>
                 <div class="metric">
-                    <div class="label">Remaining</div>
+                    <div class="label">Remaining Wt.</div>
                     <div id="remaining-weight" class="value">0</div>
-                </div>
-                <div class="metric">
-                    <div class="label">Ideal Avg.</div>
-                    <div id="ideal-average" class="value">0</div>
                 </div>
                 <div class="metric">
                     <div class="label">Suggested Next</div>
@@ -218,103 +310,210 @@
 
         <div class="card">
             <h2>Configuration</h2>
-            <div class="form-grid">
+            <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
                 <div class="input-group">
-                    <label for="max-weight">Max Gross Weight (KG)</label>
-                    <input type="number" id="max-weight" value="25000" step="1000">
+                    <label for="po-number">PO Number</label>
+                    <input type="text" id="po-number" value="TH-250507">
                 </div>
                 <div class="input-group">
-                    <label for="pallet-count">Total Pallets</label>
-                    <input type="number" id="pallet-count" value="12" min="1" step="1">
+                    <label for="cbm-prefix">CBM Prefix</label>
+                    <input type="text" id="cbm-prefix" value="2*1.1*">
+                </div>
+                <div class="input-group">
+                    <label for="max-weight">Max Gross Weight (KG)</label>
+                    <input type="text" inputmode="decimal" id="max-weight" value="25000">
+                </div>
+                <div class="input-group">
+                    <label for="pallet-count">Pallets in this Chunk</label>
+                    <input type="text" inputmode="numeric" id="pallet-count" value="12">
+                </div>
+                 <div class="input-group">
+                    <label for="pallet-weight">Pallet Weight (KG)</label>
+                    <input type="text" inputmode="decimal" id="pallet-weight" value="25">
                 </div>
             </div>
         </div>
         
         <div class="card">
-            <h2>Pallet Weights (KG)</h2>
+            <h2>Pallet Details</h2>
             <div id="pallet-inputs-grid">
-                </div>
-            <button id="reset-button">Reset All Weights</button>
+                <!-- Pallet inputs will be generated here -->
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Actions</h2>
+             <div class="button-group">
+                <button id="export-button">Export Shipping List</button>
+                <button id="reset-button">Reset Current Chunk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" id="reset-modal">
+        <div class="modal-content">
+            <h3>Confirm Reset</h3>
+            <p>Are you sure you want to reset all data for the current chunk? This action cannot be undone.</p>
+            <div class="modal-buttons">
+                <button id="confirm-reset-btn">Yes, Reset</button>
+                <button id="cancel-reset-btn">Cancel</button>
+            </div>
         </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- STATE MANAGEMENT ---
+            let chunks = [];
+            let currentChunkIndex = 0;
 
+            // --- DOM Element References ---
+            const poNumberInput = document.getElementById('po-number');
+            const cbmPrefixInput = document.getElementById('cbm-prefix');
             const maxWeightInput = document.getElementById('max-weight');
             const palletCountInput = document.getElementById('pallet-count');
+            const palletWeightInput = document.getElementById('pallet-weight');
             const palletInputsContainer = document.getElementById('pallet-inputs-grid');
-            const resetButton = document.getElementById('reset-button');
             
-            const totalWeightEl = document.getElementById('total-weight');
+            const totalGrossWeightEl = document.getElementById('total-gross-weight');
             const remainingWeightEl = document.getElementById('remaining-weight');
-            const idealAverageEl = document.getElementById('ideal-average');
             const suggestedWeightEl = document.getElementById('suggested-weight');
             const statusMessageEl = document.getElementById('status-message');
 
-            function generatePalletInputs() {
-                const existingInputs = document.querySelectorAll('.pallet-weight-input');
-                const existingValues = Array.from(existingInputs).map(input => input.value);
-                
+            const archiveButton = document.getElementById('archive-button');
+            const prevChunkBtn = document.getElementById('prev-chunk-btn');
+            const nextChunkBtn = document.getElementById('next-chunk-btn');
+            const chunkStatusEl = document.getElementById('chunk-status');
+
+            const resetButton = document.getElementById('reset-button');
+            const exportButton = document.getElementById('export-button');
+            const resetModal = document.getElementById('reset-modal');
+            const confirmResetBtn = document.getElementById('confirm-reset-btn');
+            const cancelResetBtn = document.getElementById('cancel-reset-btn');
+
+            // --- CORE LOGIC ---
+
+            function createNewChunkData() {
+                const palletCount = parseInt(palletCountInput.value) || 12;
+                const pallets = Array(palletCount).fill(null).map(() => ({ pcs: '', grossWt: '', cbm: '' }));
+                return {
+                    config: {
+                        poNumber: poNumberInput.value,
+                        cbmPrefix: cbmPrefixInput.value,
+                        maxWeight: maxWeightInput.value,
+                        palletCount: palletCount.toString(),
+                        palletWeight: palletWeightInput.value,
+                    },
+                    pallets: pallets
+                };
+            }
+
+            function saveCurrentChunk() {
+                const currentPallets = [];
+                document.querySelectorAll('.pallet-card').forEach(card => {
+                    currentPallets.push({
+                        pcs: card.querySelector('.pallet-pcs-input').value,
+                        grossWt: card.querySelector('.pallet-gross-weight-input').value,
+                        cbm: card.querySelector('.pallet-cbm-input').value,
+                    });
+                });
+
+                chunks[currentChunkIndex] = {
+                    config: {
+                        poNumber: poNumberInput.value,
+                        cbmPrefix: cbmPrefixInput.value,
+                        maxWeight: maxWeightInput.value,
+                        palletCount: palletCountInput.value,
+                        palletWeight: palletWeightInput.value
+                    },
+                    pallets: currentPallets
+                };
+            }
+
+            function loadChunk(index) {
+                const chunk = chunks[index];
+                if (!chunk) return;
+
+                poNumberInput.value = chunk.config.poNumber;
+                cbmPrefixInput.value = chunk.config.cbmPrefix;
+                maxWeightInput.value = chunk.config.maxWeight;
+                palletCountInput.value = chunk.config.palletCount;
+                palletWeightInput.value = chunk.config.palletWeight;
+
+                generatePalletInputs(chunk.pallets);
+                updateCalculations();
+                updateNavigation();
+            }
+
+            function generatePalletInputs(palletData = []) {
                 palletInputsContainer.innerHTML = '';
-                
+                const palletNumberOffset = chunks.slice(0, currentChunkIndex).reduce((acc, chunk) => acc + parseInt(chunk.config.palletCount, 10), 0);
                 const newCount = parseInt(palletCountInput.value) || 0;
 
                 for (let i = 0; i < newCount; i++) {
-                    const inputGroup = document.createElement('div');
-                    inputGroup.className = 'input-group';
-                    
-                    const label = document.createElement('label');
-                    label.htmlFor = `pallet-${i}`;
-                    label.textContent = `Pallet ${i + 1}`;
-                    
-                    const input = document.createElement('input');
-                    input.type = 'number';
-                    input.id = `pallet-${i}`;
-                    input.className = 'pallet-weight-input';
-                    input.min = '0';
-                    input.step = '50';
-                    input.placeholder = "0";
-                    
-                    if (existingValues[i] !== undefined) {
-                        input.value = existingValues[i];
-                    }
-                    
-                    input.addEventListener('input', updateCalculations);
-                    
-                    inputGroup.appendChild(label);
-                    inputGroup.appendChild(input);
-                    palletInputsContainer.appendChild(inputGroup);
+                    const data = palletData[i] || { pcs: '', grossWt: '', cbm: '' };
+                    const palletCard = document.createElement('div');
+                    palletCard.className = 'pallet-card';
+                    palletCard.innerHTML = `
+                        <h3>Pallet ${i + 1 + palletNumberOffset}</h3>
+                        <div class="pallet-input-fields">
+                            <div class="input-group">
+                                <label>Pcs</label>
+                                <input type="text" inputmode="numeric" class="pallet-pcs-input" placeholder="0" value="${data.pcs}">
+                            </div>
+                            <div class="input-group">
+                                <label>Gross Wt.</label>
+                                <input type="text" inputmode="decimal" class="pallet-gross-weight-input" placeholder="0" value="${data.grossWt}">
+                            </div>
+                            <div class="input-group">
+                                <label>CBM</label>
+                                <input type="text" inputmode="decimal" class="pallet-cbm-input" placeholder="e.g. 1.20" value="${data.cbm}">
+                            </div>
+                        </div>
+                    `;
+                    palletInputsContainer.appendChild(palletCard);
                 }
+                
+                document.querySelectorAll('.pallet-pcs-input, .pallet-gross-weight-input, .pallet-cbm-input').forEach(input => {
+                    input.addEventListener('input', () => {
+                        saveCurrentChunk();
+                        updateCalculations();
+                    });
+                });
             }
 
             function updateCalculations() {
-                const maxWeight = parseFloat(maxWeightInput.value) || 0;
-                const palletCount = parseInt(palletCountInput.value) || 0;
+                const chunk = chunks[currentChunkIndex];
+                if (!chunk) return;
                 
-                const palletWeightInputs = document.querySelectorAll('.pallet-weight-input');
-                const weights = Array.from(palletWeightInputs).map(input => parseFloat(input.value) || 0);
+                const maxWeight = parseFloat(chunk.config.maxWeight) || 0;
+                const palletCount = parseInt(chunk.config.palletCount) || 0;
+                
+                let totalGrossWeight = 0;
+                let palletsWithWeight = 0;
 
-                const currentTotalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-                const palletsWithWeight = weights.filter(w => w > 0).length;
-                const remainingWeight = maxWeight - currentTotalWeight;
+                chunk.pallets.forEach(p => {
+                    const grossWt = parseFloat(p.grossWt) || 0;
+                    totalGrossWeight += grossWt;
+                    if (grossWt > 0) palletsWithWeight++;
+                });
+
+                const remainingWeight = maxWeight - totalGrossWeight;
                 const remainingPallets = palletCount - palletsWithWeight;
-
-                const idealAverage = palletCount > 0 ? maxWeight / palletCount : 0;
                 const suggestedWeight = remainingPallets > 0 ? remainingWeight / remainingPallets : 0;
 
                 const formatNumber = (num) => Math.round(num).toLocaleString('en-US');
 
-                totalWeightEl.textContent = formatNumber(currentTotalWeight);
+                totalGrossWeightEl.textContent = formatNumber(totalGrossWeight);
                 remainingWeightEl.textContent = formatNumber(remainingWeight);
-                idealAverageEl.textContent = formatNumber(idealAverage);
                 suggestedWeightEl.textContent = formatNumber(suggestedWeight);
                 
                 statusMessageEl.classList.remove('status-success', 'status-warning', 'status-error');
-                if (currentTotalWeight > maxWeight) {
+                if (totalGrossWeight > maxWeight) {
                     statusMessageEl.classList.add('status-error');
-                    statusMessageEl.textContent = `🚨 OVER LIMIT: ${formatNumber(currentTotalWeight - maxWeight)} KG`;
-                } else if (currentTotalWeight > maxWeight * 0.95) {
+                    statusMessageEl.textContent = `🚨 OVER LIMIT: ${formatNumber(totalGrossWeight - maxWeight)} KG`;
+                } else if (totalGrossWeight > maxWeight * 0.95) {
                     statusMessageEl.classList.add('status-warning');
                     statusMessageEl.textContent = `⚠️ Approaching max weight...`;
                 } else {
@@ -323,27 +522,173 @@
                 }
             }
 
+            function updateNavigation() {
+                chunkStatusEl.textContent = `Chunk ${currentChunkIndex + 1} of ${chunks.length}`;
+                prevChunkBtn.disabled = currentChunkIndex === 0;
+                nextChunkBtn.disabled = currentChunkIndex === chunks.length - 1;
+                archiveButton.disabled = currentChunkIndex !== chunks.length - 1;
+            }
+
+            async function exportToXLSX() {
+                saveCurrentChunk();
+                
+                const poValue = poNumberInput.value;
+                const today = new Date();
+                const dateString = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+                
+                const workbook = new ExcelJS.Workbook();
+                const worksheet = workbook.addWorksheet('Shipping List');
+
+                // --- Define Styles ---
+                const borderStyle = { style: 'thin' };
+                const tableCellStyle = {
+                    border: {
+                        top: borderStyle,
+                        bottom: borderStyle,
+                        left: borderStyle,
+                        right: borderStyle
+                    },
+                    alignment: {
+                        horizontal: 'center',
+                        vertical: 'middle'
+                    }
+                };
+
+                // --- Set Column Widths ---
+                worksheet.columns = [
+                    { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 },
+                    { width: 10 }, { width: 10 }, { width: 10 }, { width: 15 }
+                ];
+
+                // --- Header Rows ---
+                worksheet.addRow(["客户：TONG HONG TANNERY (VIET NAM) JOINT STOCK COMPANY"]);
+                worksheet.mergeCells('A1:H1');
+                
+                const row2 = worksheet.addRow([`形式发票号：${poValue}`, null, null, null, `装运日期: ${dateString}`]);
+                worksheet.mergeCells('A2:D2');
+                worksheet.mergeCells('E2:H2');
+                
+                worksheet.addRow([]); // Spacer
+
+                // --- Table Header ---
+                const headerRow = worksheet.addRow(["产品名称", "ITEM NO.", "PO NO.", "托数", "NW", "GW", "张数", "CBM"]);
+                headerRow.eachCell(cell => cell.style = tableCellStyle);
+
+                // --- Data Rows ---
+                const grandTotalPallet = chunks.reduce((acc, chunk) => acc + parseInt(chunk.config.palletCount, 10), 0);
+                let runningPalletNumber = 1;
+
+                chunks.forEach((chunk, chunkIndex) => {
+                    const singlePalletWeight = parseFloat(chunk.config.palletWeight) || 0;
+                    const cbmPrefix = chunk.config.cbmPrefix || '';
+                    const chunkDataStartRow = worksheet.lastRow.number + 1;
+
+                    chunk.pallets.forEach(p => {
+                        const grossWt = parseFloat(p.grossWt) || 0;
+                        const netWt = grossWt > 0 ? grossWt - singlePalletWeight : 0;
+                        
+                        // --- NEW CBM FORMATTING LOGIC ---
+                        const cbmValue = parseFloat(p.cbm) || 0;
+                        const formattedCbm = cbmValue.toFixed(2);
+                        const finalCbm = cbmPrefix + formattedCbm;
+                        // --- END NEW LOGIC ---
+
+                        const dataRow = worksheet.addRow([
+                            "wet blue split", "split hide", poValue,
+                            `${runningPalletNumber++}-${grandTotalPallet}`,
+                            netWt, grossWt, parseFloat(p.pcs) || 0, finalCbm
+                        ]);
+                        dataRow.eachCell(cell => cell.style = tableCellStyle);
+                    });
+
+                    const chunkDataEndRow = worksheet.lastRow.number;
+
+                    if (chunkDataEndRow >= chunkDataStartRow) {
+                        const totalRow = worksheet.addRow([
+                            null, null, null, "TOTAL",
+                            { formula: `SUM(E${chunkDataStartRow}:E${chunkDataEndRow})` },
+                            { formula: `SUM(F${chunkDataStartRow}:F${chunkDataEndRow})` },
+                            { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` },
+                            null
+                        ]);
+                        totalRow.eachCell(cell => cell.style = tableCellStyle);
+                    }
+
+                    if (chunkIndex < chunks.length - 1) {
+                        worksheet.addRow([]);
+                        worksheet.addRow([]);
+                        const nextHeaderRow = worksheet.addRow(["产品名称", "ITEM NO.", "PO NO.", "托数", "NW", "GW", "张数", "CBM"]);
+                        nextHeaderRow.eachCell(cell => cell.style = tableCellStyle);
+                    }
+                });
+
+                // --- Generate and Download File ---
+                const buffer = await workbook.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                saveAs(blob, `Shipping_List_${poValue}.xlsx`);
+            }
+
             // --- EVENT LISTENERS ---
             
-            // For Max Weight, update instantly on every keystroke
-            maxWeightInput.addEventListener('input', updateCalculations);
-            
-            // --- THIS IS THE KEY CHANGE ---
-            // For Total Pallets, only update after the user finishes editing (clicks away)
-            palletCountInput.addEventListener('change', () => {
-                generatePalletInputs();
-                updateCalculations();
-            });
-            
-            resetButton.addEventListener('click', () => {
-                const palletWeightInputs = document.querySelectorAll('.pallet-weight-input');
-                palletWeightInputs.forEach(input => input.value = '');
-                updateCalculations();
+            [poNumberInput, cbmPrefixInput, maxWeightInput, palletCountInput, palletWeightInput].forEach(input => {
+                input.addEventListener('change', () => {
+                    if (input.id === 'pallet-count') {
+                        const newPalletCount = parseInt(palletCountInput.value, 10);
+                        const oldPalletCount = chunks[currentChunkIndex].pallets.length;
+                        chunks[currentChunkIndex].pallets.length = newPalletCount;
+                        if (newPalletCount > oldPalletCount) {
+                           chunks[currentChunkIndex].pallets.fill({ pcs: '', grossWt: '', cbm: '' }, oldPalletCount, newPalletCount);
+                        }
+                        chunks[currentChunkIndex].config.palletCount = palletCountInput.value;
+                        loadChunk(currentChunkIndex);
+                    }
+                    saveCurrentChunk();
+                    updateCalculations();
+                });
             });
 
+            archiveButton.addEventListener('click', () => {
+                saveCurrentChunk();
+                chunks.push(createNewChunkData());
+                currentChunkIndex = chunks.length - 1;
+                loadChunk(currentChunkIndex);
+            });
+
+            prevChunkBtn.addEventListener('click', () => {
+                if (currentChunkIndex > 0) {
+                    saveCurrentChunk();
+                    currentChunkIndex--;
+                    loadChunk(currentChunkIndex);
+                }
+            });
+
+            nextChunkBtn.addEventListener('click', () => {
+                if (currentChunkIndex < chunks.length - 1) {
+                    saveCurrentChunk();
+                    currentChunkIndex++;
+                    loadChunk(currentChunkIndex);
+                }
+            });
+            
+            resetButton.addEventListener('click', () => resetModal.classList.add('visible'));
+            cancelResetBtn.addEventListener('click', () => resetModal.classList.remove('visible'));
+            confirmResetBtn.addEventListener('click', () => {
+                const currentConfig = chunks[currentChunkIndex].config;
+                const newPalletCount = parseInt(currentConfig.palletCount, 10);
+                chunks[currentChunkIndex].pallets = Array(newPalletCount).fill(null).map(() => ({ pcs: '', grossWt: '', cbm: '' }));
+                loadChunk(currentChunkIndex);
+                resetModal.classList.remove('visible');
+            });
+            
+            exportButton.addEventListener('click', exportToXLSX);
+
             // --- INITIALIZE THE APP ---
-            generatePalletInputs();
-            updateCalculations();
+            function initialize() {
+                chunks.push(createNewChunkData());
+                loadChunk(0);
+            }
+
+            initialize();
         });
     </script>
 </body>
