@@ -222,15 +222,12 @@
             background-color: rgba(0, 0, 0, 0.6);
             display: flex;
             justify-content: center;
-            /* MODIFICATION: Changed to align modal to the top on mobile */
             align-items: flex-start;
-            /* MODIFICATION: Added padding to push it down from the top edge */
             padding-top: 4rem;
             z-index: 2000;
             visibility: hidden;
             opacity: 0;
             transition: opacity 0.3s, visibility 0.3s;
-            /* MODIFICATION: Allow scrolling on small screens if needed */
             overflow-y: auto;
         }
         .modal-overlay.visible {
@@ -382,6 +379,7 @@
             const remainingWeightEl = document.getElementById('remaining-weight');
             const suggestedWeightEl = document.getElementById('suggested-weight');
             const statusMessageEl = document.getElementById('status-message');
+            const summaryCard = document.getElementById('summary-card');
 
             const archiveButton = document.getElementById('archive-button');
             const prevChunkBtn = document.getElementById('prev-chunk-btn');
@@ -474,16 +472,26 @@
                             </div>
                         </div>
                     `;
+                    
+                    palletCard.querySelectorAll('input').forEach(input => {
+                        input.addEventListener('input', () => {
+                            saveCurrentChunk();
+                            updateCalculations();
+                        });
+
+                        input.addEventListener('focus', () => {
+                            summaryCard.style.display = 'none';
+                        });
+
+                        input.addEventListener('blur', () => {
+                            summaryCard.style.display = 'block';
+                        });
+                    });
+
                     palletInputsContainer.appendChild(palletCard);
                 }
-                
-                document.querySelectorAll('.pallet-pcs-input, .pallet-gross-weight-input, .pallet-cbm-input').forEach(input => {
-                    input.addEventListener('input', () => {
-                        saveCurrentChunk();
-                        updateCalculations();
-                    });
-                });
             }
+
 
             function updateCalculations() {
                 const chunk = chunks[currentChunkIndex];
@@ -541,28 +549,17 @@
                 const workbook = new ExcelJS.Workbook();
                 const worksheet = workbook.addWorksheet('Shipping List');
 
-                // --- Define Styles ---
                 const borderStyle = { style: 'thin' };
                 const tableCellStyle = {
-                    border: {
-                        top: borderStyle,
-                        bottom: borderStyle,
-                        left: borderStyle,
-                        right: borderStyle
-                    },
-                    alignment: {
-                        horizontal: 'center',
-                        vertical: 'middle'
-                    }
+                    border: { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle },
+                    alignment: { horizontal: 'center', vertical: 'middle' }
                 };
 
-                // --- Set Column Widths ---
                 worksheet.columns = [
                     { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 },
                     { width: 10 }, { width: 10 }, { width: 10 }, { width: 15 }
                 ];
 
-                // --- Header Rows ---
                 worksheet.addRow(["客户：TONG HONG TANNERY (VIET NAM) JOINT STOCK COMPANY"]);
                 worksheet.mergeCells('A1:H1');
                 
@@ -570,13 +567,11 @@
                 worksheet.mergeCells('A2:D2');
                 worksheet.mergeCells('E2:H2');
                 
-                worksheet.addRow([]); // Spacer
+                worksheet.addRow([]);
 
-                // --- Table Header ---
                 const headerRow = worksheet.addRow(["产品名称", "ITEM NO.", "PO NO.", "托数", "NW", "GW", "张数", "CBM"]);
                 headerRow.eachCell(cell => cell.style = tableCellStyle);
 
-                // --- Data Rows ---
                 const grandTotalPallet = chunks.reduce((acc, chunk) => acc + parseInt(chunk.config.palletCount, 10), 0);
                 let runningPalletNumber = 1;
 
@@ -589,11 +584,9 @@
                         const grossWt = parseFloat(p.grossWt) || 0;
                         const netWt = grossWt > 0 ? grossWt - singlePalletWeight : 0;
                         
-                        // --- NEW CBM FORMATTING LOGIC ---
                         const cbmValue = parseFloat(p.cbm) || 0;
                         const formattedCbm = cbmValue.toFixed(2);
                         const finalCbm = cbmPrefix + formattedCbm;
-                        // --- END NEW LOGIC ---
 
                         const dataRow = worksheet.addRow([
                             "wet blue split", "split hide", poValue,
@@ -624,7 +617,6 @@
                     }
                 });
 
-                // --- Generate and Download File ---
                 const buffer = await workbook.xlsx.writeBuffer();
                 const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                 saveAs(blob, `Shipping_List_${poValue}.xlsx`);
@@ -632,7 +624,11 @@
 
             // --- EVENT LISTENERS ---
             
+            // --- MODIFICATION START ---
+            // This loop now adds the focus/blur listeners to ALL configuration inputs
+            // to hide the summary card, in addition to its original role.
             [poNumberInput, cbmPrefixInput, maxWeightInput, palletCountInput, palletWeightInput].forEach(input => {
+                // This is the original listener for when the value changes
                 input.addEventListener('change', () => {
                     if (input.id === 'pallet-count') {
                         const newPalletCount = parseInt(palletCountInput.value, 10);
@@ -647,7 +643,18 @@
                     saveCurrentChunk();
                     updateCalculations();
                 });
+
+                // This new listener hides the summary card on focus
+                input.addEventListener('focus', () => {
+                    summaryCard.style.display = 'none';
+                });
+
+                // This new listener shows the summary card on blur
+                input.addEventListener('blur', () => {
+                    summaryCard.style.display = 'block';
+                });
             });
+            // --- MODIFICATION END ---
 
             archiveButton.addEventListener('click', () => {
                 saveCurrentChunk();
@@ -674,6 +681,19 @@
             
             resetButton.addEventListener('click', () => resetModal.classList.add('visible'));
             cancelResetBtn.addEventListener('click', () => resetModal.classList.remove('visible'));
+            
+            resetModal.addEventListener('click', (event) => {
+                if (event.target === resetModal) {
+                    resetModal.classList.remove('visible');
+                }
+            });
+
+            document.addEventListener('focusin', (event) => {
+                if (resetModal.classList.contains('visible') && !resetModal.contains(event.target)) {
+                    resetModal.classList.remove('visible');
+                }
+            });
+            
             confirmResetBtn.addEventListener('click', () => {
                 const currentConfig = chunks[currentChunkIndex].config;
                 const newPalletCount = parseInt(currentConfig.palletCount, 10);
