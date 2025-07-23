@@ -255,6 +255,7 @@
         #cancel-reset-btn { background-color: #6c757d; }
         
         /* --- MEDIA QUERIES FOR RESPONSIVENESS --- */
+        
         @media (min-width: 600px) {
             .metrics-grid {
                 grid-template-columns: repeat(3, 1fr);
@@ -479,13 +480,17 @@
                             updateCalculations();
                         });
 
+                        // --- MODIFICATION ---
+                        // On focus, un-stick the panel so it scrolls away
                         input.addEventListener('focus', () => {
-                            summaryCard.style.display = 'none';
+                            summaryCard.style.position = 'static';
                         });
 
+                        // On blur, make the panel sticky again
                         input.addEventListener('blur', () => {
-                            summaryCard.style.display = 'block';
+                            summaryCard.style.position = 'sticky';
                         });
+                        // --- END MODIFICATION ---
                     });
 
                     palletInputsContainer.appendChild(palletCard);
@@ -624,11 +629,7 @@
 
             // --- EVENT LISTENERS ---
             
-            // --- MODIFICATION START ---
-            // This loop now adds the focus/blur listeners to ALL configuration inputs
-            // to hide the summary card, in addition to its original role.
             [poNumberInput, cbmPrefixInput, maxWeightInput, palletCountInput, palletWeightInput].forEach(input => {
-                // This is the original listener for when the value changes
                 input.addEventListener('change', () => {
                     if (input.id === 'pallet-count') {
                         const newPalletCount = parseInt(palletCountInput.value, 10);
@@ -644,17 +645,18 @@
                     updateCalculations();
                 });
 
-                // This new listener hides the summary card on focus
+                // --- MODIFICATION ---
+                // On focus, un-stick the panel so it scrolls away
                 input.addEventListener('focus', () => {
-                    summaryCard.style.display = 'none';
+                    summaryCard.style.position = 'static';
                 });
 
-                // This new listener shows the summary card on blur
+                // On blur, make the panel sticky again
                 input.addEventListener('blur', () => {
-                    summaryCard.style.display = 'block';
+                    summaryCard.style.position = 'sticky';
                 });
+                // --- END MODIFICATION ---
             });
-            // --- MODIFICATION END ---
 
             archiveButton.addEventListener('click', () => {
                 saveCurrentChunk();
@@ -683,7 +685,7 @@
             cancelResetBtn.addEventListener('click', () => resetModal.classList.remove('visible'));
             
             resetModal.addEventListener('click', (event) => {
-                if (event.target === resetModal) {
+                if (event.target === event.currentTarget) {
                     resetModal.classList.remove('visible');
                 }
             });
