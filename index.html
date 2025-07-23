@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pallet Weight Calculator & Exporter</title>
-    <!-- Replaced SheetJS with ExcelJS and FileSaver for styling support -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
@@ -223,11 +222,16 @@
             background-color: rgba(0, 0, 0, 0.6);
             display: flex;
             justify-content: center;
-            align-items: center;
+            /* MODIFICATION: Changed to align modal to the top on mobile */
+            align-items: flex-start;
+            /* MODIFICATION: Added padding to push it down from the top edge */
+            padding-top: 4rem;
             z-index: 2000;
             visibility: hidden;
             opacity: 0;
             transition: opacity 0.3s, visibility 0.3s;
+            /* MODIFICATION: Allow scrolling on small screens if needed */
+            overflow-y: auto;
         }
         .modal-overlay.visible {
             visibility: visible;
@@ -337,8 +341,7 @@
         <div class="card">
             <h2>Pallet Details</h2>
             <div id="pallet-inputs-grid">
-                <!-- Pallet inputs will be generated here -->
-            </div>
+                </div>
         </div>
 
         <div class="card">
@@ -350,7 +353,6 @@
         </div>
     </div>
 
-    <!-- Confirmation Modal -->
     <div class="modal-overlay" id="reset-modal">
         <div class="modal-content">
             <h3>Confirm Reset</h3>
