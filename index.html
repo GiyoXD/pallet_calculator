@@ -10,6 +10,7 @@
         /* --- General Body & Font Styling --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+            font-size: 1rem;
             background-color: #f0f2f6;
             color: #1a1a1a;
             margin: 0;
@@ -128,12 +129,53 @@
             width: 100%;
             box-sizing: border-box;
             transition: border-color 0.2s, box-shadow 0.2s;
+            height: auto;
         }
 
         .input-group input:focus {
             outline: none;
             border-color: #007bff;
             box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+        }
+
+        .input-with-buttons {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .input-with-buttons input {
+            flex: 1;
+        }
+
+        .count-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            width: 36px;
+            height: 36px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .count-button:hover {
+            background: #0056b3;
+        }
+
+        .count-button:active {
+            transform: scale(0.95);
+        }
+
+        .count-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
         }
 
         #pallet-inputs-grid {
@@ -273,6 +315,29 @@
                 grid-template-columns: repeat(3, 1fr);
             }
         }
+        #toggle-summary-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 3000;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            font-size: 2rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.1s;
+        }
+        #toggle-summary-btn:hover {
+            background: #0056b3;
+            transform: scale(1.08);
+        }
     </style>
 </head>
 <body>
@@ -310,6 +375,8 @@
             </div>
         </div>
 
+        <button id="toggle-summary-btn" title="Show/Hide Calculation Overlay">🔽</button>
+
         <div class="card">
             <h2>Configuration</h2>
             <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
@@ -327,11 +394,23 @@
                 </div>
                 <div class="input-group">
                     <label for="pallet-count">Pallets in this Chunk</label>
-                    <input type="text" inputmode="numeric" id="pallet-count" value="12">
+                    <div class="input-with-buttons">
+                        <button type="button" class="count-button" id="dec-pallet-btn">−</button>
+                        <input type="text" inputmode="numeric" id="pallet-count" value="12">
+                        <button type="button" class="count-button" id="inc-pallet-btn">+</button>
+                    </div>
                 </div>
                  <div class="input-group">
                     <label for="pallet-weight">Pallet Weight (KG)</label>
-                    <input type="text" inputmode="decimal" id="pallet-weight" value="25">
+                    <input type="text" inputmode="decimal" id="pallet-weight" value="40">
+                </div>
+                <div class="input-group">
+                    <label for="input-mode">Input Mode</label>
+                    <select id="input-mode">
+                        <option value="gross-cbm">Gross Wt. & CBM Only</option>
+                        <option value="sqft-pcs-gross-cbm">Sqft, Pcs, Gross, CBM</option>
+                        <option value="pcs-gross-cbm">Pcs, Gross, CBM</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -367,6 +446,8 @@
             // --- STATE MANAGEMENT ---
             let chunks = [];
             let currentChunkIndex = 0;
+            let inputMode = 'gross-cbm';
+            let latestSuggestedWeight = 0;
 
             // --- DOM Element References ---
             const poNumberInput = document.getElementById('po-number');
@@ -381,6 +462,18 @@
             const suggestedWeightEl = document.getElementById('suggested-weight');
             const statusMessageEl = document.getElementById('status-message');
             const summaryCard = document.getElementById('summary-card');
+            const toggleSummaryBtn = document.getElementById('toggle-summary-btn');
+            let summaryVisible = true;
+            function updateToggleButton() {
+                toggleSummaryBtn.textContent = summaryVisible ? '🔽' : '🔼';
+                toggleSummaryBtn.title = summaryVisible ? 'Hide Calculation Overlay' : 'Show Calculation Overlay';
+            }
+            toggleSummaryBtn.addEventListener('click', () => {
+                summaryVisible = !summaryVisible;
+                summaryCard.style.display = summaryVisible ? '' : 'none';
+                updateToggleButton();
+            });
+            updateToggleButton();
 
             const archiveButton = document.getElementById('archive-button');
             const prevChunkBtn = document.getElementById('prev-chunk-btn');
@@ -392,12 +485,27 @@
             const resetModal = document.getElementById('reset-modal');
             const confirmResetBtn = document.getElementById('confirm-reset-btn');
             const cancelResetBtn = document.getElementById('cancel-reset-btn');
+            const inputModeSelect = document.getElementById('input-mode');
+            const incPalletBtn = document.getElementById('inc-pallet-btn');
+            const decPalletBtn = document.getElementById('dec-pallet-btn');
 
             // --- CORE LOGIC ---
 
+            function parseNumber(val) {
+                if (typeof val !== 'string') return 0;
+                return parseFloat(val.replace(/,/g, '.')) || 0;
+            }
+
             function createNewChunkData() {
                 const palletCount = parseInt(palletCountInput.value) || 12;
-                const pallets = Array(palletCount).fill(null).map(() => ({ pcs: '', grossWt: '', cbm: '' }));
+                let pallets;
+                if (inputMode === 'gross-cbm') {
+                    pallets = Array(palletCount).fill(null).map(() => ({ grossWt: '', cbm: '' }));
+                } else if (inputMode === 'sqft-pcs-gross-cbm') {
+                    pallets = Array(palletCount).fill(null).map(() => ({ sqft: '', pcs: '', grossWt: '', cbm: '' }));
+                } else {
+                    pallets = Array(palletCount).fill(null).map(() => ({ pcs: '', grossWt: '', cbm: '' }));
+                }
                 return {
                     config: {
                         poNumber: poNumberInput.value,
@@ -405,6 +513,7 @@
                         maxWeight: maxWeightInput.value,
                         palletCount: palletCount.toString(),
                         palletWeight: palletWeightInput.value,
+                        inputMode: inputMode
                     },
                     pallets: pallets
                 };
@@ -413,20 +522,34 @@
             function saveCurrentChunk() {
                 const currentPallets = [];
                 document.querySelectorAll('.pallet-card').forEach(card => {
-                    currentPallets.push({
-                        pcs: card.querySelector('.pallet-pcs-input').value,
-                        grossWt: card.querySelector('.pallet-gross-weight-input').value,
-                        cbm: card.querySelector('.pallet-cbm-input').value,
-                    });
+                    if (inputMode === 'gross-cbm') {
+                        currentPallets.push({
+                            grossWt: card.querySelector('.pallet-gross-weight-input').value,
+                            cbm: card.querySelector('.pallet-cbm-input').value
+                        });
+                    } else if (inputMode === 'sqft-pcs-gross-cbm') {
+                        currentPallets.push({
+                            sqft: card.querySelector('.pallet-sqft-input').value,
+                            pcs: card.querySelector('.pallet-pcs-input').value,
+                            grossWt: card.querySelector('.pallet-gross-weight-input').value,
+                            cbm: card.querySelector('.pallet-cbm-input').value
+                        });
+                    } else {
+                        currentPallets.push({
+                            pcs: card.querySelector('.pallet-pcs-input').value,
+                            grossWt: card.querySelector('.pallet-gross-weight-input').value,
+                            cbm: card.querySelector('.pallet-cbm-input').value
+                        });
+                    }
                 });
-
                 chunks[currentChunkIndex] = {
                     config: {
                         poNumber: poNumberInput.value,
                         cbmPrefix: cbmPrefixInput.value,
                         maxWeight: maxWeightInput.value,
                         palletCount: palletCountInput.value,
-                        palletWeight: palletWeightInput.value
+                        palletWeight: palletWeightInput.value,
+                        inputMode: inputMode
                     },
                     pallets: currentPallets
                 };
@@ -435,13 +558,13 @@
             function loadChunk(index) {
                 const chunk = chunks[index];
                 if (!chunk) return;
-
                 poNumberInput.value = chunk.config.poNumber;
                 cbmPrefixInput.value = chunk.config.cbmPrefix;
                 maxWeightInput.value = chunk.config.maxWeight;
                 palletCountInput.value = chunk.config.palletCount;
                 palletWeightInput.value = chunk.config.palletWeight;
-
+                inputMode = chunk.config.inputMode || 'gross-cbm';
+                inputModeSelect.value = inputMode;
                 generatePalletInputs(chunk.pallets);
                 updateCalculations();
                 updateNavigation();
@@ -451,48 +574,75 @@
                 palletInputsContainer.innerHTML = '';
                 const palletNumberOffset = chunks.slice(0, currentChunkIndex).reduce((acc, chunk) => acc + parseInt(chunk.config.palletCount, 10), 0);
                 const newCount = parseInt(palletCountInput.value) || 0;
-
                 for (let i = 0; i < newCount; i++) {
-                    const data = palletData[i] || { pcs: '', grossWt: '', cbm: '' };
+                    let data = palletData[i] || {};
                     const palletCard = document.createElement('div');
                     palletCard.className = 'pallet-card';
-                    palletCard.innerHTML = `
-                        <h3>Pallet ${i + 1 + palletNumberOffset}</h3>
-                        <div class="pallet-input-fields">
-                            <div class="input-group">
-                                <label>Pcs</label>
-                                <input type="text" inputmode="numeric" class="pallet-pcs-input" placeholder="0" value="${data.pcs}">
-                            </div>
+                    let fields = '';
+                    if (inputMode === 'gross-cbm') {
+                        fields = `
                             <div class="input-group">
                                 <label>Gross Wt.</label>
-                                <input type="text" inputmode="decimal" class="pallet-gross-weight-input" placeholder="0" value="${data.grossWt}">
+                                <input type="text" inputmode="decimal" class="pallet-gross-weight-input" placeholder="${data.grossWt ? '' : latestSuggestedWeight}" value="${data.grossWt || ''}">
                             </div>
                             <div class="input-group">
                                 <label>CBM</label>
-                                <input type="text" inputmode="decimal" class="pallet-cbm-input" placeholder="e.g. 1.20" value="${data.cbm}">
+                                <input type="text" inputmode="decimal" class="pallet-cbm-input" placeholder="e.g. 1.20" value="${data.cbm || ''}">
                             </div>
+                        `;
+                    } else if (inputMode === 'sqft-pcs-gross-cbm') {
+                        fields = `
+                            <div class="input-group">
+                                <label>Sqft</label>
+                                <input type="text" inputmode="decimal" class="pallet-sqft-input" placeholder="0" value="${data.sqft || ''}">
+                            </div>
+                            <div class="input-group">
+                                <label>Pcs</label>
+                                <input type="text" inputmode="numeric" class="pallet-pcs-input" placeholder="0" value="${data.pcs || ''}">
+                            </div>
+                            <div class="input-group">
+                                <label>Gross Wt.</label>
+                                <input type="text" inputmode="decimal" class="pallet-gross-weight-input" placeholder="${data.grossWt ? '' : latestSuggestedWeight}" value="${data.grossWt || ''}">
+                            </div>
+                            <div class="input-group">
+                                <label>CBM</label>
+                                <input type="text" inputmode="decimal" class="pallet-cbm-input" placeholder="e.g. 1.20" value="${data.cbm || ''}">
+                            </div>
+                        `;
+                    } else {
+                        fields = `
+                            <div class="input-group">
+                                <label>Pcs</label>
+                                <input type="text" inputmode="numeric" class="pallet-pcs-input" placeholder="0" value="${data.pcs || ''}">
+                            </div>
+                            <div class="input-group">
+                                <label>Gross Wt.</label>
+                                <input type="text" inputmode="decimal" class="pallet-gross-weight-input" placeholder="${data.grossWt ? '' : latestSuggestedWeight}" value="${data.grossWt || ''}">
+                            </div>
+                            <div class="input-group">
+                                <label>CBM</label>
+                                <input type="text" inputmode="decimal" class="pallet-cbm-input" placeholder="e.g. 1.20" value="${data.cbm || ''}">
+                            </div>
+                        `;
+                    }
+                    palletCard.innerHTML = `
+                        <h3>Pallet ${i + 1 + palletNumberOffset}</h3>
+                        <div class="pallet-input-fields">
+                            ${fields}
                         </div>
                     `;
-                    
                     palletCard.querySelectorAll('input').forEach(input => {
                         input.addEventListener('input', () => {
                             saveCurrentChunk();
                             updateCalculations();
                         });
-
-                        // --- MODIFICATION ---
-                        // On focus, un-stick the panel so it scrolls away
                         input.addEventListener('focus', () => {
                             summaryCard.style.position = 'static';
                         });
-
-                        // On blur, make the panel sticky again
                         input.addEventListener('blur', () => {
                             summaryCard.style.position = 'sticky';
                         });
-                        // --- END MODIFICATION ---
                     });
-
                     palletInputsContainer.appendChild(palletCard);
                 }
             }
@@ -501,29 +651,23 @@
             function updateCalculations() {
                 const chunk = chunks[currentChunkIndex];
                 if (!chunk) return;
-                
-                const maxWeight = parseFloat(chunk.config.maxWeight) || 0;
+                const maxWeight = parseNumber(chunk.config.maxWeight) || 0;
                 const palletCount = parseInt(chunk.config.palletCount) || 0;
-                
                 let totalGrossWeight = 0;
                 let palletsWithWeight = 0;
-
                 chunk.pallets.forEach(p => {
-                    const grossWt = parseFloat(p.grossWt) || 0;
+                    const grossWt = parseNumber(p.grossWt);
                     totalGrossWeight += grossWt;
                     if (grossWt > 0) palletsWithWeight++;
                 });
-
                 const remainingWeight = maxWeight - totalGrossWeight;
                 const remainingPallets = palletCount - palletsWithWeight;
                 const suggestedWeight = remainingPallets > 0 ? remainingWeight / remainingPallets : 0;
-
+                latestSuggestedWeight = Math.round(suggestedWeight);
                 const formatNumber = (num) => Math.round(num).toLocaleString('en-US');
-
                 totalGrossWeightEl.textContent = formatNumber(totalGrossWeight);
                 remainingWeightEl.textContent = formatNumber(remainingWeight);
                 suggestedWeightEl.textContent = formatNumber(suggestedWeight);
-                
                 statusMessageEl.classList.remove('status-success', 'status-warning', 'status-error');
                 if (totalGrossWeight > maxWeight) {
                     statusMessageEl.classList.add('status-error');
@@ -535,6 +679,14 @@
                     statusMessageEl.classList.add('status-success');
                     statusMessageEl.textContent = `✅ Looking Good`;
                 }
+                // Update placeholders for all visible gross weight inputs
+                document.querySelectorAll('.pallet-gross-weight-input').forEach(input => {
+                    if (!input.value) {
+                        input.placeholder = latestSuggestedWeight;
+                    } else {
+                        input.placeholder = '';
+                    }
+                });
             }
 
             function updateNavigation() {
@@ -546,82 +698,142 @@
 
             async function exportToXLSX() {
                 saveCurrentChunk();
-                
                 const poValue = poNumberInput.value;
                 const today = new Date();
                 const dateString = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
-                
                 const workbook = new ExcelJS.Workbook();
                 const worksheet = workbook.addWorksheet('Shipping List');
-
                 const borderStyle = { style: 'thin' };
                 const tableCellStyle = {
                     border: { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle },
                     alignment: { horizontal: 'center', vertical: 'middle' }
                 };
-
-                worksheet.columns = [
-                    { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 },
-                    { width: 10 }, { width: 10 }, { width: 10 }, { width: 15 }
-                ];
-
+                let columns, headerLabels;
+                if (chunks[0].config.inputMode === 'sqft-pcs-gross-cbm') {
+                    columns = [
+                        { width: 15 }, { width: 15 }, { width: 15 }, { width: 10 }, { width: 10 }, { width: 15 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 15 }
+                    ];
+                    headerLabels = ["产品名称", "ITEM NO.", "PO NO.", "Sqft", "PCS", "托数", "NW", "GW", "张数", "CBM"];
+                } else if (chunks[0].config.inputMode === 'pcs-gross-cbm') {
+                    columns = [
+                        { width: 15 }, { width: 15 }, { width: 15 }, { width: 10 }, { width: 15 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 15 }
+                    ];
+                    headerLabels = ["产品名称", "ITEM NO.", "PO NO.", "PCS", "托数", "NW", "GW", "张数", "CBM"];
+                } else {
+                    columns = [
+                        { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 15 }
+                    ];
+                    headerLabels = ["产品名称", "ITEM NO.", "PO NO.", "托数", "NW", "GW", "CBM"];
+                }
+                worksheet.columns = columns;
                 worksheet.addRow(["客户：TONG HONG TANNERY (VIET NAM) JOINT STOCK COMPANY"]);
-                worksheet.mergeCells('A1:H1');
-                
+                worksheet.mergeCells('A1:' + String.fromCharCode(64 + columns.length) + '1');
                 const row2 = worksheet.addRow([`形式发票号：${poValue}`, null, null, null, `装运日期: ${dateString}`]);
                 worksheet.mergeCells('A2:D2');
-                worksheet.mergeCells('E2:H2');
-                
+                worksheet.mergeCells('E2:' + String.fromCharCode(64 + columns.length) + '2');
                 worksheet.addRow([]);
-
-                const headerRow = worksheet.addRow(["产品名称", "ITEM NO.", "PO NO.", "托数", "NW", "GW", "张数", "CBM"]);
-                headerRow.eachCell(cell => cell.style = tableCellStyle);
-
+                const headerRow = worksheet.addRow(headerLabels);
+                headerRow.eachCell(cell => {
+                    cell.style = tableCellStyle;
+                    cell.font = { name: 'Times New Roman', size: 12 };
+                });
                 const grandTotalPallet = chunks.reduce((acc, chunk) => acc + parseInt(chunk.config.palletCount, 10), 0);
                 let runningPalletNumber = 1;
-
                 chunks.forEach((chunk, chunkIndex) => {
-                    const singlePalletWeight = parseFloat(chunk.config.palletWeight) || 0;
+                    const singlePalletWeight = parseNumber(chunk.config.palletWeight) || 0;
                     const cbmPrefix = chunk.config.cbmPrefix || '';
                     const chunkDataStartRow = worksheet.lastRow.number + 1;
-
                     chunk.pallets.forEach(p => {
-                        const grossWt = parseFloat(p.grossWt) || 0;
+                        const grossWt = parseNumber(p.grossWt);
                         const netWt = grossWt > 0 ? grossWt - singlePalletWeight : 0;
-                        
-                        const cbmValue = parseFloat(p.cbm) || 0;
+                        const cbmValue = parseNumber(p.cbm);
                         const formattedCbm = cbmValue.toFixed(2);
                         const finalCbm = cbmPrefix + formattedCbm;
-
-                        const dataRow = worksheet.addRow([
-                            "wet blue split", "split hide", poValue,
-                            `${runningPalletNumber++}-${grandTotalPallet}`,
-                            netWt, grossWt, parseFloat(p.pcs) || 0, finalCbm
-                        ]);
-                        dataRow.eachCell(cell => cell.style = tableCellStyle);
+                        let pcs = 0;
+                        let sqft = '';
+                        if (chunk.config.inputMode === 'sqft-pcs-gross-cbm') {
+                            pcs = parseNumber(p.pcs);
+                            sqft = p.sqft || '';
+                            const dataRow = worksheet.addRow([
+                                "wet blue split", "split hide", poValue,
+                                sqft,
+                                pcs,
+                                `${runningPalletNumber++}-${grandTotalPallet}`,
+                                netWt, grossWt, pcs, finalCbm
+                            ]);
+                            dataRow.eachCell(cell => {
+                                cell.style = tableCellStyle;
+                                cell.font = { name: 'Times New Roman', size: 12 };
+                            });
+                        } else if (chunk.config.inputMode === 'pcs-gross-cbm') {
+                            pcs = parseNumber(p.pcs);
+                            const dataRow = worksheet.addRow([
+                                "wet blue split", "split hide", poValue,
+                                pcs,
+                                `${runningPalletNumber++}-${grandTotalPallet}`,
+                                netWt, grossWt, pcs, finalCbm
+                            ]);
+                            dataRow.eachCell(cell => {
+                                cell.style = tableCellStyle;
+                                cell.font = { name: 'Times New Roman', size: 12 };
+                            });
+                        } else {
+                            const dataRow = worksheet.addRow([
+                                "wet blue split", "split hide", poValue,
+                                `${runningPalletNumber++}-${grandTotalPallet}`,
+                                netWt, grossWt, finalCbm
+                            ]);
+                            dataRow.eachCell(cell => {
+                                cell.style = tableCellStyle;
+                                cell.font = { name: 'Times New Roman', size: 12 };
+                            });
+                        }
                     });
-
                     const chunkDataEndRow = worksheet.lastRow.number;
-
                     if (chunkDataEndRow >= chunkDataStartRow) {
-                        const totalRow = worksheet.addRow([
-                            null, null, null, "TOTAL",
-                            { formula: `SUM(E${chunkDataStartRow}:E${chunkDataEndRow})` },
-                            { formula: `SUM(F${chunkDataStartRow}:F${chunkDataEndRow})` },
-                            { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` },
-                            null
-                        ]);
-                        totalRow.eachCell(cell => cell.style = tableCellStyle);
+                        let totalRow;
+                        if (chunk.config.inputMode === 'sqft-pcs-gross-cbm') {
+                            totalRow = worksheet.addRow([
+                                null, null, null, null, null, "TOTAL",
+                                { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` },
+                                { formula: `SUM(H${chunkDataStartRow}:H${chunkDataEndRow})` },
+                                { formula: `SUM(I${chunkDataStartRow}:I${chunkDataEndRow})` },
+                                { formula: `SUM(J${chunkDataStartRow}:J${chunkDataEndRow})` },
+                                null
+                            ]);
+                        } else if (chunk.config.inputMode === 'pcs-gross-cbm') {
+                            totalRow = worksheet.addRow([
+                                null, null, null, null, "TOTAL",
+                                { formula: `SUM(F${chunkDataStartRow}:F${chunkDataEndRow})` },
+                                { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` },
+                                { formula: `SUM(H${chunkDataStartRow}:H${chunkDataEndRow})` },
+                                { formula: `SUM(I${chunkDataStartRow}:I${chunkDataEndRow})` },
+                                null
+                            ]);
+                        } else {
+                            totalRow = worksheet.addRow([
+                                null, null, null, "TOTAL",
+                                { formula: `SUM(E${chunkDataStartRow}:E${chunkDataEndRow})` },
+                                { formula: `SUM(F${chunkDataStartRow}:F${chunkDataEndRow})` },
+                                { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` },
+                                null
+                            ]);
+                        }
+                        totalRow.eachCell(cell => {
+                            cell.style = tableCellStyle;
+                            cell.font = { name: 'Times New Roman', size: 12 };
+                        });
                     }
-
                     if (chunkIndex < chunks.length - 1) {
                         worksheet.addRow([]);
                         worksheet.addRow([]);
-                        const nextHeaderRow = worksheet.addRow(["产品名称", "ITEM NO.", "PO NO.", "托数", "NW", "GW", "张数", "CBM"]);
-                        nextHeaderRow.eachCell(cell => cell.style = tableCellStyle);
+                        const nextHeaderRow = worksheet.addRow(headerLabels);
+                        nextHeaderRow.eachCell(cell => {
+                            cell.style = tableCellStyle;
+                            cell.font = { name: 'Times New Roman', size: 12 };
+                        });
                     }
                 });
-
                 const buffer = await workbook.xlsx.writeBuffer();
                 const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                 saveAs(blob, `Shipping_List_${poValue}.xlsx`);
@@ -629,7 +841,7 @@
 
             // --- EVENT LISTENERS ---
             
-            [poNumberInput, cbmPrefixInput, maxWeightInput, palletCountInput, palletWeightInput].forEach(input => {
+            [poNumberInput, cbmPrefixInput, maxWeightInput, palletWeightInput].forEach(input => {
                 input.addEventListener('change', () => {
                     if (input.id === 'pallet-count') {
                         const newPalletCount = parseInt(palletCountInput.value, 10);
@@ -656,6 +868,56 @@
                     summaryCard.style.position = 'sticky';
                 });
                 // --- END MODIFICATION ---
+            });
+
+            palletCountInput.addEventListener('change', () => {
+                const newPalletCount = parseInt(palletCountInput.value, 10);
+                const oldPalletCount = chunks[currentChunkIndex].pallets.length;
+                chunks[currentChunkIndex].pallets.length = newPalletCount;
+                if (newPalletCount > oldPalletCount) {
+                   chunks[currentChunkIndex].pallets.fill({ pcs: '', grossWt: '', cbm: '' }, oldPalletCount, newPalletCount);
+                }
+                chunks[currentChunkIndex].config.palletCount = palletCountInput.value;
+                loadChunk(currentChunkIndex);
+            });
+
+            palletCountInput.addEventListener('focus', () => {
+                summaryCard.style.position = 'static';
+            });
+
+            palletCountInput.addEventListener('blur', () => {
+                summaryCard.style.position = 'sticky';
+            });
+
+            inputModeSelect.addEventListener('change', () => {
+                inputMode = inputModeSelect.value;
+                // Rebuild current chunk's pallet data to match the new mode
+                const newPalletCount = parseInt(palletCountInput.value, 10) || 0;
+                let newPallets;
+                if (inputMode === 'gross-cbm') {
+                    newPallets = Array(newPalletCount).fill(null).map(() => ({ grossWt: '', cbm: '' }));
+                } else if (inputMode === 'sqft-pcs-gross-cbm') {
+                    newPallets = Array(newPalletCount).fill(null).map(() => ({ sqft: '', pcs: '', grossWt: '', cbm: '' }));
+                } else {
+                    newPallets = Array(newPalletCount).fill(null).map(() => ({ pcs: '', grossWt: '', cbm: '' }));
+                }
+                chunks[currentChunkIndex].pallets = newPallets;
+                chunks[currentChunkIndex].config.inputMode = inputMode;
+                loadChunk(currentChunkIndex);
+            });
+
+            incPalletBtn.addEventListener('click', () => {
+                const currentCount = parseInt(palletCountInput.value, 10) || 0;
+                palletCountInput.value = currentCount + 1;
+                palletCountInput.dispatchEvent(new Event('change'));
+            });
+
+            decPalletBtn.addEventListener('click', () => {
+                const currentCount = parseInt(palletCountInput.value, 10) || 0;
+                if (currentCount > 1) {
+                    palletCountInput.value = currentCount - 1;
+                    palletCountInput.dispatchEvent(new Event('change'));
+                }
             });
 
             archiveButton.addEventListener('click', () => {
