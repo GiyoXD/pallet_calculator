@@ -1,345 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pallet Weight Calculator & Exporter</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <style>
-        /* --- General Body & Font Styling --- */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-            font-size: 1rem;
-            background-color: #f0f2f6;
-            color: #1a1a1a;
-            margin: 0;
-            padding: 1rem;
-        }
-
-        /* --- Main App Container --- */
-        .container {
-            max-width: 1100px;
-            margin: auto;
-            display: grid;
-            gap: 1.5rem;
-        }
-
-        h1, h2 {
-            color: #0d1b2a;
-        }
-
-        h1 {
-            text-align: center;
-            font-size: 2rem;
-        }
-        
-        p.subtitle {
-            text-align: center;
-            margin-top: -1rem;
-            color: #555;
-            margin-bottom: 1rem;
-        }
-
-        /* --- Card Styling for Sections --- */
-        .card {
-            background-color: #ffffff;
-            border-radius: 16px;
-            padding: 1.5rem;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.07);
-        }
-
-        h2 {
-            margin-top: 0;
-            border-bottom: 2px solid #e9ecef;
-            padding-bottom: 0.75rem;
-            margin-bottom: 1.5rem;
-        }
-
-        /* --- Sticky Summary Header --- */
-        .sticky-summary {
-            position: sticky;
-            top: 1rem;
-            z-index: 1000;
-        }
-        
-        /* --- Summary Metrics Grid --- */
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-        .metric {
-            text-align: center;
-            padding: 0.5rem;
-            background-color: #f8f9fa;
-            border-radius: 10px;
-        }
-        .metric .label {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 0.25rem;
-        }
-        .metric .value {
-            font-size: 1.85rem;
-            font-weight: 700;
-            color: #0d1b2a;
-        }
-        
-        /* --- Dynamic Status Message --- */
-        .status-message {
-            padding: 0.75rem;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 1rem;
-            margin-bottom: 1rem;
-            transition: background-color 0.3s, color 0.3s;
-            min-height: 1.2em;
-        }
-        .status-success { background-color: #c8e6c9; color: #1b5e20; }
-        .status-warning { background-color: #fff9c4; color: #f57f17; }
-        .status-error   { background-color: #ffcdd2; color: #b71c1c; }
-
-        /* --- Input Fields & Buttons --- */
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-        
-        .input-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .input-group label {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: #333;
-        }
-        
-        .input-group input {
-            padding: 0.8rem;
-            border: 1px solid #ced4da;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 500;
-            width: 100%;
-            box-sizing: border-box;
-            transition: border-color 0.2s, box-shadow 0.2s;
-            height: auto;
-        }
-
-        .input-group input:focus {
-            outline: none;
-            border-color: #007bff;
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
-        }
-
-        .input-with-buttons {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .input-with-buttons input {
-            flex: 1;
-        }
-
-        .count-button {
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            width: 36px;
-            height: 36px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color 0.2s, transform 0.1s;
-        }
-
-        .count-button:hover {
-            background: #0056b3;
-        }
-
-        .count-button:active {
-            transform: scale(0.95);
-        }
-
-        .count-button:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        #pallet-inputs-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-        }
-
-        .pallet-card {
-            border: 1px solid #e9ecef;
-            border-radius: 12px;
-            padding: 1rem;
-        }
-
-        .pallet-card h3 {
-            margin-top: 0;
-            margin-bottom: 1rem;
-        }
-        
-        .pallet-input-fields {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-        }
-        
-        .button-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        button {
-            color: white;
-            border: none;
-            padding: 1rem;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s, opacity 0.2s;
-            width: 100%;
-        }
-        button:disabled {
-            background-color: #6c757d;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        #export-button { background-color: #28a745; }
-        #export-button:hover:not(:disabled) { background-color: #218838; }
-
-        #reset-button { background-color: #dc3545; }
-        #reset-button:hover:not(:disabled) { background-color: #c82333; }
-        
-        #archive-button { background-color: #007bff; }
-        #archive-button:hover:not(:disabled) { background-color: #0056b3; }
-        
-        button:active {
-            transform: scale(0.98);
-        }
-
-        .chunk-navigation {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        #chunk-status {
-            font-weight: 600;
-            font-size: 1.1rem;
-            padding: 0.5rem 1rem;
-            background-color: #e9ecef;
-            border-radius: 8px;
-        }
-
-
-        /* --- Confirmation Modal --- */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.6);
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding-top: 4rem;
-            z-index: 2000;
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.3s, visibility 0.3s;
-            overflow-y: auto;
-        }
-        .modal-overlay.visible {
-            visibility: visible;
-            opacity: 1;
-        }
-        .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            max-width: 400px;
-            width: 90%;
-            text-align: center;
-        }
-        .modal-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-top: 1.5rem;
-        }
-        .modal-buttons button {
-            width: 120px;
-        }
-        #confirm-reset-btn { background-color: #dc3545; }
-        #cancel-reset-btn { background-color: #6c757d; }
-        
-        /* --- MEDIA QUERIES FOR RESPONSIVENESS --- */
-        
-        @media (min-width: 600px) {
-            .metrics-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-            .form-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            #pallet-inputs-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        
-        @media (min-width: 1100px) {
-            #pallet-inputs-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-        #toggle-summary-btn {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            z-index: 3000;
-            background: #007bff;
-            color: #fff;
-            border: none;
-            border-radius: 50%;
-            width: 56px;
-            height: 56px;
-            font-size: 2rem;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s, transform 0.1s;
-        }
-        #toggle-summary-btn:hover {
-            background: #0056b3;
-            transform: scale(1.08);
-        }
-    </style>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body>
     <div class="container">
         <div>
@@ -354,7 +24,7 @@
                 <span id="chunk-status">Chunk 1</span>
                 <button id="next-chunk-btn">Next &rarr;</button>
             </div>
-             <button id="archive-button">Archive Chunk & Start New</button>
+            <button id="archive-button">Archive Chunk & Start New</button>
         </div>
 
         <div id="summary-card" class="card sticky-summary">
@@ -381,6 +51,15 @@
             <h2>Configuration</h2>
             <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
                 <div class="input-group">
+                    <label for="company-name">Company Name</label>
+                    <select id="company-name">
+                        <option value="TONG HONG TANNERY (VIET NAM) JOINT STOCK COMPANY">Tong Hong Tannery</option>
+                        <option value="CAMBODIAN HUAMEI BIOTECHNOLOGY CO., LTD. ​​">CHM</option>
+                        <option value="THAI RONG EXPORT IMPORT TRADING INVESTMENT PRODUCTION COMPANY LIMITED">THAI RONG</option>
+                        <option value="GLOBAL HIDE PROCESSING CO., LTD">Global Hide Processing</option>
+                    </select>
+                </div>
+                <div class="input-group">
                     <label for="po-number">PO Number</label>
                     <input type="text" id="po-number" value="TH-250507">
                 </div>
@@ -400,9 +79,13 @@
                         <button type="button" class="count-button" id="inc-pallet-btn">+</button>
                     </div>
                 </div>
-                 <div class="input-group">
+                <div class="input-group">
                     <label for="pallet-weight">Pallet Weight (KG)</label>
                     <input type="text" inputmode="decimal" id="pallet-weight" value="40">
+                </div>
+                <div class="input-group">
+                    <label for="unit-price">Unit Price (per KG)</label>
+                    <input type="text" inputmode="decimal" id="unit-price" value="2.50">
                 </div>
                 <div class="input-group">
                     <label for="input-mode">Input Mode</label>
@@ -414,18 +97,22 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="card">
             <h2>Pallet Details</h2>
             <div id="pallet-inputs-grid">
-                </div>
+            </div>
         </div>
 
         <div class="card">
             <h2>Actions</h2>
-             <div class="button-group">
+            <div class="button-group">
                 <button id="export-button">Export Shipping List</button>
                 <button id="reset-button">Reset Current Chunk</button>
+            </div>
+            <div class="button-group" style="margin-top: 1rem;">
+                <button id="clear-cache-button" style="background-color: #ffc107; color: #000;">Clear All Data</button>
+                <button id="cache-info-button" style="background-color: #17a2b8;">Cache Info</button>
             </div>
         </div>
     </div>
@@ -441,541 +128,40 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- STATE MANAGEMENT ---
-            let chunks = [];
-            let currentChunkIndex = 0;
-            let inputMode = 'gross-cbm';
-            let latestSuggestedWeight = 0;
+    <div class="modal-overlay" id="clear-cache-modal">
+        <div class="modal-content">
+            <h3>Clear All Data</h3>
+            <p>This will permanently delete all your saved chunks and reset the application. This action cannot be
+                undone.</p>
+            <div class="modal-buttons">
+                <button id="confirm-clear-cache-btn" style="background-color: #dc3545;">Yes, Clear All</button>
+                <button id="cancel-clear-cache-btn" style="background-color: #6c757d;">Cancel</button>
+            </div>
+        </div>
+    </div>
 
-            // --- DOM Element References ---
-            const poNumberInput = document.getElementById('po-number');
-            const cbmPrefixInput = document.getElementById('cbm-prefix');
-            const maxWeightInput = document.getElementById('max-weight');
-            const palletCountInput = document.getElementById('pallet-count');
-            const palletWeightInput = document.getElementById('pallet-weight');
-            const palletInputsContainer = document.getElementById('pallet-inputs-grid');
-            
-            const totalGrossWeightEl = document.getElementById('total-gross-weight');
-            const remainingWeightEl = document.getElementById('remaining-weight');
-            const suggestedWeightEl = document.getElementById('suggested-weight');
-            const statusMessageEl = document.getElementById('status-message');
-            const summaryCard = document.getElementById('summary-card');
-            const toggleSummaryBtn = document.getElementById('toggle-summary-btn');
-            let summaryVisible = true;
-            function updateToggleButton() {
-                toggleSummaryBtn.textContent = summaryVisible ? '🔽' : '🔼';
-                toggleSummaryBtn.title = summaryVisible ? 'Hide Calculation Overlay' : 'Show Calculation Overlay';
-            }
-            toggleSummaryBtn.addEventListener('click', () => {
-                summaryVisible = !summaryVisible;
-                summaryCard.style.display = summaryVisible ? '' : 'none';
-                updateToggleButton();
-            });
-            updateToggleButton();
+    <div class="modal-overlay" id="cache-info-modal">
+        <div class="modal-content">
+            <h3>Cache Information</h3>
+            <div id="cache-info-content">
+                <p>Loading cache information...</p>
+            </div>
+            <div class="modal-buttons">
+                <button id="close-cache-info-btn" style="background-color: #007bff;">Close</button>
+            </div>
+        </div>
+    </div>
 
-            const archiveButton = document.getElementById('archive-button');
-            const prevChunkBtn = document.getElementById('prev-chunk-btn');
-            const nextChunkBtn = document.getElementById('next-chunk-btn');
-            const chunkStatusEl = document.getElementById('chunk-status');
-
-            const resetButton = document.getElementById('reset-button');
-            const exportButton = document.getElementById('export-button');
-            const resetModal = document.getElementById('reset-modal');
-            const confirmResetBtn = document.getElementById('confirm-reset-btn');
-            const cancelResetBtn = document.getElementById('cancel-reset-btn');
-            const inputModeSelect = document.getElementById('input-mode');
-            const incPalletBtn = document.getElementById('inc-pallet-btn');
-            const decPalletBtn = document.getElementById('dec-pallet-btn');
-
-            // --- CORE LOGIC ---
-
-            function parseNumber(val) {
-                if (typeof val !== 'string') return 0;
-                return parseFloat(val.replace(/,/g, '.')) || 0;
-            }
-
-            function createNewChunkData() {
-                const palletCount = parseInt(palletCountInput.value) || 12;
-                let pallets;
-                if (inputMode === 'gross-cbm') {
-                    pallets = Array(palletCount).fill(null).map(() => ({ grossWt: '', cbm: '' }));
-                } else if (inputMode === 'sqft-pcs-gross-cbm') {
-                    pallets = Array(palletCount).fill(null).map(() => ({ sqft: '', pcs: '', grossWt: '', cbm: '' }));
-                } else {
-                    pallets = Array(palletCount).fill(null).map(() => ({ pcs: '', grossWt: '', cbm: '' }));
-                }
-                return {
-                    config: {
-                        poNumber: poNumberInput.value,
-                        cbmPrefix: cbmPrefixInput.value,
-                        maxWeight: maxWeightInput.value,
-                        palletCount: palletCount.toString(),
-                        palletWeight: palletWeightInput.value,
-                        inputMode: inputMode
-                    },
-                    pallets: pallets
-                };
-            }
-
-            function saveCurrentChunk() {
-                const currentPallets = [];
-                document.querySelectorAll('.pallet-card').forEach(card => {
-                    if (inputMode === 'gross-cbm') {
-                        currentPallets.push({
-                            grossWt: card.querySelector('.pallet-gross-weight-input').value,
-                            cbm: card.querySelector('.pallet-cbm-input').value
-                        });
-                    } else if (inputMode === 'sqft-pcs-gross-cbm') {
-                        currentPallets.push({
-                            sqft: card.querySelector('.pallet-sqft-input').value,
-                            pcs: card.querySelector('.pallet-pcs-input').value,
-                            grossWt: card.querySelector('.pallet-gross-weight-input').value,
-                            cbm: card.querySelector('.pallet-cbm-input').value
-                        });
-                    } else {
-                        currentPallets.push({
-                            pcs: card.querySelector('.pallet-pcs-input').value,
-                            grossWt: card.querySelector('.pallet-gross-weight-input').value,
-                            cbm: card.querySelector('.pallet-cbm-input').value
-                        });
-                    }
-                });
-                chunks[currentChunkIndex] = {
-                    config: {
-                        poNumber: poNumberInput.value,
-                        cbmPrefix: cbmPrefixInput.value,
-                        maxWeight: maxWeightInput.value,
-                        palletCount: palletCountInput.value,
-                        palletWeight: palletWeightInput.value,
-                        inputMode: inputMode
-                    },
-                    pallets: currentPallets
-                };
-            }
-
-            function loadChunk(index) {
-                const chunk = chunks[index];
-                if (!chunk) return;
-                poNumberInput.value = chunk.config.poNumber;
-                cbmPrefixInput.value = chunk.config.cbmPrefix;
-                maxWeightInput.value = chunk.config.maxWeight;
-                palletCountInput.value = chunk.config.palletCount;
-                palletWeightInput.value = chunk.config.palletWeight;
-                inputMode = chunk.config.inputMode || 'gross-cbm';
-                inputModeSelect.value = inputMode;
-                generatePalletInputs(chunk.pallets);
-                updateCalculations();
-                updateNavigation();
-            }
-
-            function generatePalletInputs(palletData = []) {
-                palletInputsContainer.innerHTML = '';
-                const palletNumberOffset = chunks.slice(0, currentChunkIndex).reduce((acc, chunk) => acc + parseInt(chunk.config.palletCount, 10), 0);
-                const newCount = parseInt(palletCountInput.value) || 0;
-                for (let i = 0; i < newCount; i++) {
-                    let data = palletData[i] || {};
-                    const palletCard = document.createElement('div');
-                    palletCard.className = 'pallet-card';
-                    let fields = '';
-                    if (inputMode === 'gross-cbm') {
-                        fields = `
-                            <div class="input-group">
-                                <label>Gross Wt.</label>
-                                <input type="text" inputmode="decimal" class="pallet-gross-weight-input" placeholder="${data.grossWt ? '' : latestSuggestedWeight}" value="${data.grossWt || ''}">
-                            </div>
-                            <div class="input-group">
-                                <label>CBM</label>
-                                <input type="text" inputmode="decimal" class="pallet-cbm-input" placeholder="e.g. 1.20" value="${data.cbm || ''}">
-                            </div>
-                        `;
-                    } else if (inputMode === 'sqft-pcs-gross-cbm') {
-                        fields = `
-                            <div class="input-group">
-                                <label>Sqft</label>
-                                <input type="text" inputmode="decimal" class="pallet-sqft-input" placeholder="0" value="${data.sqft || ''}">
-                            </div>
-                            <div class="input-group">
-                                <label>Pcs</label>
-                                <input type="text" inputmode="numeric" class="pallet-pcs-input" placeholder="0" value="${data.pcs || ''}">
-                            </div>
-                            <div class="input-group">
-                                <label>Gross Wt.</label>
-                                <input type="text" inputmode="decimal" class="pallet-gross-weight-input" placeholder="${data.grossWt ? '' : latestSuggestedWeight}" value="${data.grossWt || ''}">
-                            </div>
-                            <div class="input-group">
-                                <label>CBM</label>
-                                <input type="text" inputmode="decimal" class="pallet-cbm-input" placeholder="e.g. 1.20" value="${data.cbm || ''}">
-                            </div>
-                        `;
-                    } else {
-                        fields = `
-                            <div class="input-group">
-                                <label>Pcs</label>
-                                <input type="text" inputmode="numeric" class="pallet-pcs-input" placeholder="0" value="${data.pcs || ''}">
-                            </div>
-                            <div class="input-group">
-                                <label>Gross Wt.</label>
-                                <input type="text" inputmode="decimal" class="pallet-gross-weight-input" placeholder="${data.grossWt ? '' : latestSuggestedWeight}" value="${data.grossWt || ''}">
-                            </div>
-                            <div class="input-group">
-                                <label>CBM</label>
-                                <input type="text" inputmode="decimal" class="pallet-cbm-input" placeholder="e.g. 1.20" value="${data.cbm || ''}">
-                            </div>
-                        `;
-                    }
-                    palletCard.innerHTML = `
-                        <h3>Pallet ${i + 1 + palletNumberOffset}</h3>
-                        <div class="pallet-input-fields">
-                            ${fields}
-                        </div>
-                    `;
-                    palletCard.querySelectorAll('input').forEach(input => {
-                        input.addEventListener('input', () => {
-                            saveCurrentChunk();
-                            updateCalculations();
-                        });
-                        input.addEventListener('focus', () => {
-                            summaryCard.style.position = 'static';
-                        });
-                        input.addEventListener('blur', () => {
-                            summaryCard.style.position = 'sticky';
-                        });
-                    });
-                    palletInputsContainer.appendChild(palletCard);
-                }
-            }
-
-
-            function updateCalculations() {
-                const chunk = chunks[currentChunkIndex];
-                if (!chunk) return;
-                const maxWeight = parseNumber(chunk.config.maxWeight) || 0;
-                const palletCount = parseInt(chunk.config.palletCount) || 0;
-                let totalGrossWeight = 0;
-                let palletsWithWeight = 0;
-                chunk.pallets.forEach(p => {
-                    const grossWt = parseNumber(p.grossWt);
-                    totalGrossWeight += grossWt;
-                    if (grossWt > 0) palletsWithWeight++;
-                });
-                const remainingWeight = maxWeight - totalGrossWeight;
-                const remainingPallets = palletCount - palletsWithWeight;
-                const suggestedWeight = remainingPallets > 0 ? remainingWeight / remainingPallets : 0;
-                latestSuggestedWeight = Math.round(suggestedWeight);
-                const formatNumber = (num) => Math.round(num).toLocaleString('en-US');
-                totalGrossWeightEl.textContent = formatNumber(totalGrossWeight);
-                remainingWeightEl.textContent = formatNumber(remainingWeight);
-                suggestedWeightEl.textContent = formatNumber(suggestedWeight);
-                statusMessageEl.classList.remove('status-success', 'status-warning', 'status-error');
-                if (totalGrossWeight > maxWeight) {
-                    statusMessageEl.classList.add('status-error');
-                    statusMessageEl.textContent = `🚨 OVER LIMIT: ${formatNumber(totalGrossWeight - maxWeight)} KG`;
-                } else if (totalGrossWeight > maxWeight * 0.95) {
-                    statusMessageEl.classList.add('status-warning');
-                    statusMessageEl.textContent = `⚠️ Approaching max weight...`;
-                } else {
-                    statusMessageEl.classList.add('status-success');
-                    statusMessageEl.textContent = `✅ Looking Good`;
-                }
-                // Update placeholders for all visible gross weight inputs
-                document.querySelectorAll('.pallet-gross-weight-input').forEach(input => {
-                    if (!input.value) {
-                        input.placeholder = latestSuggestedWeight;
-                    } else {
-                        input.placeholder = '';
-                    }
-                });
-            }
-
-            function updateNavigation() {
-                chunkStatusEl.textContent = `Chunk ${currentChunkIndex + 1} of ${chunks.length}`;
-                prevChunkBtn.disabled = currentChunkIndex === 0;
-                nextChunkBtn.disabled = currentChunkIndex === chunks.length - 1;
-                archiveButton.disabled = currentChunkIndex !== chunks.length - 1;
-            }
-
-            async function exportToXLSX() {
-                saveCurrentChunk();
-                const poValue = poNumberInput.value;
-                const today = new Date();
-                const dateString = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
-                const workbook = new ExcelJS.Workbook();
-                const worksheet = workbook.addWorksheet('Shipping List');
-                const borderStyle = { style: 'thin' };
-                const tableCellStyle = {
-                    border: { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle },
-                    alignment: { horizontal: 'center', vertical: 'middle' }
-                };
-                let columns, headerLabels;
-                if (chunks[0].config.inputMode === 'sqft-pcs-gross-cbm') {
-                    columns = [
-                        { width: 15 }, { width: 15 }, { width: 15 }, { width: 10 }, { width: 10 }, { width: 15 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 15 }
-                    ];
-                    headerLabels = ["产品名称", "ITEM NO.", "PO NO.", "Sqft", "PCS", "托数", "NW", "GW", "张数", "CBM"];
-                } else if (chunks[0].config.inputMode === 'pcs-gross-cbm') {
-                    columns = [
-                        { width: 15 }, { width: 15 }, { width: 15 }, { width: 10 }, { width: 15 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 15 }
-                    ];
-                    headerLabels = ["产品名称", "ITEM NO.", "PO NO.", "PCS", "托数", "NW", "GW", "张数", "CBM"];
-                } else {
-                    columns = [
-                        { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 15 }
-                    ];
-                    headerLabels = ["产品名称", "ITEM NO.", "PO NO.", "托数", "NW", "GW", "CBM"];
-                }
-                worksheet.columns = columns;
-                worksheet.addRow(["客户：TONG HONG TANNERY (VIET NAM) JOINT STOCK COMPANY"]);
-                worksheet.mergeCells('A1:' + String.fromCharCode(64 + columns.length) + '1');
-                const row2 = worksheet.addRow([`形式发票号：${poValue}`, null, null, null, `装运日期: ${dateString}`]);
-                worksheet.mergeCells('A2:D2');
-                worksheet.mergeCells('E2:' + String.fromCharCode(64 + columns.length) + '2');
-                worksheet.addRow([]);
-                const headerRow = worksheet.addRow(headerLabels);
-                headerRow.eachCell(cell => {
-                    cell.style = tableCellStyle;
-                    cell.font = { name: 'Times New Roman', size: 12 };
-                });
-                const grandTotalPallet = chunks.reduce((acc, chunk) => acc + parseInt(chunk.config.palletCount, 10), 0);
-                let runningPalletNumber = 1;
-                chunks.forEach((chunk, chunkIndex) => {
-                    const singlePalletWeight = parseNumber(chunk.config.palletWeight) || 0;
-                    const cbmPrefix = chunk.config.cbmPrefix || '';
-                    const chunkDataStartRow = worksheet.lastRow.number + 1;
-                    chunk.pallets.forEach(p => {
-                        const grossWt = parseNumber(p.grossWt);
-                        const netWt = grossWt > 0 ? grossWt - singlePalletWeight : 0;
-                        const cbmValue = parseNumber(p.cbm);
-                        const formattedCbm = cbmValue.toFixed(2);
-                        const finalCbm = cbmPrefix + formattedCbm;
-                        let pcs = 0;
-                        let sqft = '';
-                        if (chunk.config.inputMode === 'sqft-pcs-gross-cbm') {
-                            pcs = parseNumber(p.pcs);
-                            sqft = p.sqft || '';
-                            const dataRow = worksheet.addRow([
-                                "wet blue split", "split hide", poValue,
-                                sqft,
-                                pcs,
-                                `${runningPalletNumber++}-${grandTotalPallet}`,
-                                netWt, grossWt, pcs, finalCbm
-                            ]);
-                            dataRow.eachCell(cell => {
-                                cell.style = tableCellStyle;
-                                cell.font = { name: 'Times New Roman', size: 12 };
-                            });
-                        } else if (chunk.config.inputMode === 'pcs-gross-cbm') {
-                            pcs = parseNumber(p.pcs);
-                            const dataRow = worksheet.addRow([
-                                "wet blue split", "split hide", poValue,
-                                pcs,
-                                `${runningPalletNumber++}-${grandTotalPallet}`,
-                                netWt, grossWt, pcs, finalCbm
-                            ]);
-                            dataRow.eachCell(cell => {
-                                cell.style = tableCellStyle;
-                                cell.font = { name: 'Times New Roman', size: 12 };
-                            });
-                        } else {
-                            const dataRow = worksheet.addRow([
-                                "wet blue split", "split hide", poValue,
-                                `${runningPalletNumber++}-${grandTotalPallet}`,
-                                netWt, grossWt, finalCbm
-                            ]);
-                            dataRow.eachCell(cell => {
-                                cell.style = tableCellStyle;
-                                cell.font = { name: 'Times New Roman', size: 12 };
-                            });
-                        }
-                    });
-                    const chunkDataEndRow = worksheet.lastRow.number;
-                    if (chunkDataEndRow >= chunkDataStartRow) {
-                        let totalRow;
-                        if (chunk.config.inputMode === 'sqft-pcs-gross-cbm') {
-                            totalRow = worksheet.addRow([
-                                null, null, null, null, null, "TOTAL",
-                                { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` },
-                                { formula: `SUM(H${chunkDataStartRow}:H${chunkDataEndRow})` },
-                                { formula: `SUM(I${chunkDataStartRow}:I${chunkDataEndRow})` },
-                                { formula: `SUM(J${chunkDataStartRow}:J${chunkDataEndRow})` },
-                                null
-                            ]);
-                        } else if (chunk.config.inputMode === 'pcs-gross-cbm') {
-                            totalRow = worksheet.addRow([
-                                null, null, null, null, "TOTAL",
-                                { formula: `SUM(F${chunkDataStartRow}:F${chunkDataEndRow})` },
-                                { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` },
-                                { formula: `SUM(H${chunkDataStartRow}:H${chunkDataEndRow})` },
-                                { formula: `SUM(I${chunkDataStartRow}:I${chunkDataEndRow})` },
-                                null
-                            ]);
-                        } else {
-                            totalRow = worksheet.addRow([
-                                null, null, null, "TOTAL",
-                                { formula: `SUM(E${chunkDataStartRow}:E${chunkDataEndRow})` },
-                                { formula: `SUM(F${chunkDataStartRow}:F${chunkDataEndRow})` },
-                                { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` },
-                                null
-                            ]);
-                        }
-                        totalRow.eachCell(cell => {
-                            cell.style = tableCellStyle;
-                            cell.font = { name: 'Times New Roman', size: 12 };
-                        });
-                    }
-                    if (chunkIndex < chunks.length - 1) {
-                        worksheet.addRow([]);
-                        worksheet.addRow([]);
-                        const nextHeaderRow = worksheet.addRow(headerLabels);
-                        nextHeaderRow.eachCell(cell => {
-                            cell.style = tableCellStyle;
-                            cell.font = { name: 'Times New Roman', size: 12 };
-                        });
-                    }
-                });
-                const buffer = await workbook.xlsx.writeBuffer();
-                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                saveAs(blob, `Shipping_List_${poValue}.xlsx`);
-            }
-
-            // --- EVENT LISTENERS ---
-            
-            [poNumberInput, cbmPrefixInput, maxWeightInput, palletWeightInput].forEach(input => {
-                input.addEventListener('change', () => {
-                    if (input.id === 'pallet-count') {
-                        const newPalletCount = parseInt(palletCountInput.value, 10);
-                        const oldPalletCount = chunks[currentChunkIndex].pallets.length;
-                        chunks[currentChunkIndex].pallets.length = newPalletCount;
-                        if (newPalletCount > oldPalletCount) {
-                           chunks[currentChunkIndex].pallets.fill({ pcs: '', grossWt: '', cbm: '' }, oldPalletCount, newPalletCount);
-                        }
-                        chunks[currentChunkIndex].config.palletCount = palletCountInput.value;
-                        loadChunk(currentChunkIndex);
-                    }
-                    saveCurrentChunk();
-                    updateCalculations();
-                });
-
-                // --- MODIFICATION ---
-                // On focus, un-stick the panel so it scrolls away
-                input.addEventListener('focus', () => {
-                    summaryCard.style.position = 'static';
-                });
-
-                // On blur, make the panel sticky again
-                input.addEventListener('blur', () => {
-                    summaryCard.style.position = 'sticky';
-                });
-                // --- END MODIFICATION ---
-            });
-
-            palletCountInput.addEventListener('change', () => {
-                const newPalletCount = parseInt(palletCountInput.value, 10);
-                const oldPalletCount = chunks[currentChunkIndex].pallets.length;
-                chunks[currentChunkIndex].pallets.length = newPalletCount;
-                if (newPalletCount > oldPalletCount) {
-                   chunks[currentChunkIndex].pallets.fill({ pcs: '', grossWt: '', cbm: '' }, oldPalletCount, newPalletCount);
-                }
-                chunks[currentChunkIndex].config.palletCount = palletCountInput.value;
-                loadChunk(currentChunkIndex);
-            });
-
-            palletCountInput.addEventListener('focus', () => {
-                summaryCard.style.position = 'static';
-            });
-
-            palletCountInput.addEventListener('blur', () => {
-                summaryCard.style.position = 'sticky';
-            });
-
-            inputModeSelect.addEventListener('change', () => {
-                inputMode = inputModeSelect.value;
-                // Rebuild current chunk's pallet data to match the new mode
-                const newPalletCount = parseInt(palletCountInput.value, 10) || 0;
-                let newPallets;
-                if (inputMode === 'gross-cbm') {
-                    newPallets = Array(newPalletCount).fill(null).map(() => ({ grossWt: '', cbm: '' }));
-                } else if (inputMode === 'sqft-pcs-gross-cbm') {
-                    newPallets = Array(newPalletCount).fill(null).map(() => ({ sqft: '', pcs: '', grossWt: '', cbm: '' }));
-                } else {
-                    newPallets = Array(newPalletCount).fill(null).map(() => ({ pcs: '', grossWt: '', cbm: '' }));
-                }
-                chunks[currentChunkIndex].pallets = newPallets;
-                chunks[currentChunkIndex].config.inputMode = inputMode;
-                loadChunk(currentChunkIndex);
-            });
-
-            incPalletBtn.addEventListener('click', () => {
-                const currentCount = parseInt(palletCountInput.value, 10) || 0;
-                palletCountInput.value = currentCount + 1;
-                palletCountInput.dispatchEvent(new Event('change'));
-            });
-
-            decPalletBtn.addEventListener('click', () => {
-                const currentCount = parseInt(palletCountInput.value, 10) || 0;
-                if (currentCount > 1) {
-                    palletCountInput.value = currentCount - 1;
-                    palletCountInput.dispatchEvent(new Event('change'));
-                }
-            });
-
-            archiveButton.addEventListener('click', () => {
-                saveCurrentChunk();
-                chunks.push(createNewChunkData());
-                currentChunkIndex = chunks.length - 1;
-                loadChunk(currentChunkIndex);
-            });
-
-            prevChunkBtn.addEventListener('click', () => {
-                if (currentChunkIndex > 0) {
-                    saveCurrentChunk();
-                    currentChunkIndex--;
-                    loadChunk(currentChunkIndex);
-                }
-            });
-
-            nextChunkBtn.addEventListener('click', () => {
-                if (currentChunkIndex < chunks.length - 1) {
-                    saveCurrentChunk();
-                    currentChunkIndex++;
-                    loadChunk(currentChunkIndex);
-                }
-            });
-            
-            resetButton.addEventListener('click', () => resetModal.classList.add('visible'));
-            cancelResetBtn.addEventListener('click', () => resetModal.classList.remove('visible'));
-            
-            resetModal.addEventListener('click', (event) => {
-                if (event.target === event.currentTarget) {
-                    resetModal.classList.remove('visible');
-                }
-            });
-
-            document.addEventListener('focusin', (event) => {
-                if (resetModal.classList.contains('visible') && !resetModal.contains(event.target)) {
-                    resetModal.classList.remove('visible');
-                }
-            });
-            
-            confirmResetBtn.addEventListener('click', () => {
-                const currentConfig = chunks[currentChunkIndex].config;
-                const newPalletCount = parseInt(currentConfig.palletCount, 10);
-                chunks[currentChunkIndex].pallets = Array(newPalletCount).fill(null).map(() => ({ pcs: '', grossWt: '', cbm: '' }));
-                loadChunk(currentChunkIndex);
-                resetModal.classList.remove('visible');
-            });
-            
-            exportButton.addEventListener('click', exportToXLSX);
-
-            // --- INITIALIZE THE APP ---
-            function initialize() {
-                chunks.push(createNewChunkData());
-                loadChunk(0);
-            }
-
-            initialize();
-        });
-    </script>
+    <!-- JavaScript Modules -->
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/dom-elements.js"></script>
+    <script src="js/pallet-generator.js"></script>
+    <script src="js/calculations.js"></script>
+    <script src="js/excel-exporter.js"></script>
+    <script src="js/event-handlers.js"></script>
+    <script src="js/app.js"></script>
 </body>
+
 </html>
