@@ -196,6 +196,19 @@ h2 {
     gap: 1rem;
 }
 
+/* Dynamic column layouts for different input modes */
+.pallet-input-fields.mode-gross-cbm {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.pallet-input-fields.mode-pcs-gross-cbm {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.pallet-input-fields.mode-sqft-pcs-gross-cbm {
+    grid-template-columns: repeat(4, 1fr);
+}
+
 .button-group {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -348,6 +361,17 @@ button:active {
     }
     #pallet-inputs-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+    
+    /* Responsive column adjustments for different input modes */
+    .pallet-input-fields.mode-sqft-pcs-gross-cbm {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 900px) {
+    .pallet-input-fields.mode-sqft-pcs-gross-cbm {
+        grid-template-columns: repeat(4, 1fr);
     }
 }
 

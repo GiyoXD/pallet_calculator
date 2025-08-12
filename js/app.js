@@ -24,17 +24,22 @@ class App {
         // Enable auto-save
         this.state.enableAutoSave();
         
+        // Ensure input mode is synchronized between state and DOM
+        this.dom.inputModeSelect.value = this.state.inputMode;
+        
         // Try to load from cache first
         const loadedFromCache = this.state.initialize();
         
         if (loadedFromCache) {
             console.log('Restored from cache:', this.state.chunks.length, 'chunks');
+            console.log('Input mode from cache:', this.state.inputMode);
             // Load the saved current chunk
             this.loadChunk(this.state.currentChunkIndex);
             // Update summary visibility
             this.dom.toggleSummaryVisibility(this.state.summaryVisible);
         } else {
             console.log('Starting fresh - no cache found');
+            console.log('Initial input mode:', this.state.inputMode);
             // Create initial chunk
             const initialChunkData = this.state.createNewChunkData(this.dom.getConfigValues());
             this.state.addChunk(initialChunkData);
@@ -47,6 +52,10 @@ class App {
         
         // Show cache info in console for debugging
         this.showCacheInfo();
+        
+        // Log final state for debugging
+        console.log('Final input mode:', this.state.inputMode);
+        console.log('DOM input mode:', this.dom.inputModeSelect.value);
     }
 
     showCacheInfo() {
@@ -60,7 +69,9 @@ class App {
         const currentPallets = [];
         document.querySelectorAll('.pallet-card').forEach(card => {
             const palletData = this.extractPalletData(card);
-            currentPallets.push(palletData);
+            // Ensure all required fields are present for the current input mode
+            const completePalletData = this.ensureCompletePalletData(palletData);
+            currentPallets.push(completePalletData);
         });
         
         const chunkData = {
@@ -69,6 +80,28 @@ class App {
         };
         
         this.state.updateChunk(this.state.currentChunkIndex, chunkData);
+    }
+
+    ensureCompletePalletData(palletData) {
+        if (this.state.inputMode === 'sqft-pcs-gross-cbm') {
+            return {
+                sqft: palletData.sqft || '',
+                pcs: palletData.pcs || '',
+                grossWt: palletData.grossWt || '',
+                cbm: palletData.cbm || ''
+            };
+        } else if (this.state.inputMode === 'pcs-gross-cbm') {
+            return {
+                pcs: palletData.pcs || '',
+                grossWt: palletData.grossWt || '',
+                cbm: palletData.cbm || ''
+            };
+        } else {
+            return {
+                grossWt: palletData.grossWt || '',
+                cbm: palletData.cbm || ''
+            };
+        }
     }
 
     extractPalletData(card) {
@@ -99,9 +132,37 @@ class App {
         
         this.dom.setConfigValues(chunk.config);
         this.state.setInputMode(chunk.config.inputMode || 'gross-cbm');
-        this.palletGenerator.generatePalletInputs(chunk.pallets);
+        
+        // Ensure data compatibility when switching input modes
+        const migratedPallets = this.migratePalletData(chunk.pallets, chunk.config.inputMode);
+        
+        this.palletGenerator.generatePalletInputs(migratedPallets);
         this.updateCalculations();
         this.updateNavigation();
+    }
+
+    migratePalletData(pallets, inputMode) {
+        return pallets.map(pallet => {
+            if (inputMode === 'sqft-pcs-gross-cbm') {
+                return {
+                    sqft: pallet.sqft || '',
+                    pcs: pallet.pcs || '',
+                    grossWt: pallet.grossWt || '',
+                    cbm: pallet.cbm || ''
+                };
+            } else if (inputMode === 'pcs-gross-cbm') {
+                return {
+                    pcs: pallet.pcs || '',
+                    grossWt: pallet.grossWt || '',
+                    cbm: pallet.cbm || ''
+                };
+            } else {
+                return {
+                    grossWt: pallet.grossWt || '',
+                    cbm: pallet.cbm || ''
+                };
+            }
+        });
     }
 
     updateCalculations() {

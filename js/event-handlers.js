@@ -62,12 +62,43 @@ class EventHandlers {
     }
 
     handleInputModeChange() {
+        console.log('Input mode changing to:', this.dom.inputModeSelect.value);
+        console.log('Previous input mode:', this.state.inputMode);
+        
         this.state.setInputMode(this.dom.inputModeSelect.value);
         if (window.app) {
+            // Save current chunk first
             window.app.saveCurrentChunk();
-            this.palletGenerator.generatePalletInputs(this.state.getCurrentChunk()?.pallets || []);
+            
+            // Get the current chunk and migrate its data to the new input mode
+            const currentChunk = this.state.getCurrentChunk();
+            if (currentChunk) {
+                console.log('Current chunk before migration:', currentChunk);
+                const migratedPallets = window.app.migratePalletData(currentChunk.pallets, this.state.inputMode);
+                console.log('Migrated pallets:', migratedPallets);
+                
+                // Update the chunk with migrated data
+                const updatedChunk = {
+                    ...currentChunk,
+                    pallets: migratedPallets,
+                    config: {
+                        ...currentChunk.config,
+                        inputMode: this.state.inputMode
+                    }
+                };
+                this.state.updateChunk(this.state.currentChunkIndex, updatedChunk);
+                
+                // Regenerate inputs with migrated data
+                this.palletGenerator.generatePalletInputs(migratedPallets);
+            } else {
+                // If no current chunk, just regenerate with empty data
+                this.palletGenerator.generatePalletInputs([]);
+            }
+            
             this.calculations.updateCalculations();
         }
+        
+        console.log('Input mode change completed. New mode:', this.state.inputMode);
     }
 
     handlePalletCountButton(delta) {

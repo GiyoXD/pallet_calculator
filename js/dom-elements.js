@@ -62,7 +62,8 @@ class DOMElements {
             maxWeight: this.maxWeightInput.value,
             palletCount: this.palletCountInput.value,
             palletWeight: this.palletWeightInput.value,
-            unitPrice: this.unitPriceInput.value
+            unitPrice: this.unitPriceInput.value,
+            inputMode: this.inputModeSelect.value
         };
     }
 

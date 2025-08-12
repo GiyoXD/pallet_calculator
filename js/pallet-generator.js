@@ -30,7 +30,7 @@ class PalletGenerator {
         const fields = this.generateFieldsHTML(data);
         palletCard.innerHTML = `
             <h3>Pallet ${index + 1 + offset}</h3>
-            <div class="pallet-input-fields">
+            <div class="pallet-input-fields mode-${this.state.inputMode}">
                 ${fields}
             </div>
         `;
@@ -41,6 +41,9 @@ class PalletGenerator {
 
     generateFieldsHTML(data) {
         const suggestedPlaceholder = data.grossWt ? '' : this.state.latestSuggestedWeight;
+        
+        console.log('Generating fields for input mode:', this.state.inputMode);
+        console.log('Pallet data:', data);
         
         if (this.state.inputMode === 'gross-cbm') {
             return `
