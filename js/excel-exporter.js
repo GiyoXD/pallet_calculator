@@ -133,7 +133,7 @@ class ExcelExporter {
             return [
                 "wet blue split", "split hide", config.poNumber || '',
                 `${palletNumber}-${grandTotalPallet}`,
-                sqft, pcs, netWt, grossWt, finalCbm, unitPrice, 
+                pcs, sqft, netWt, grossWt, finalCbm, unitPrice, 
                 { formula: `G${currentRowNumber}*J${currentRowNumber}` } // Net Weight * Unit Price
             ];
         } else if (inputMode === 'pcs-gross-cbm') {
@@ -163,8 +163,8 @@ class ExcelExporter {
             if (inputMode === 'sqft-pcs-gross-cbm') {
                 totalRow = worksheet.addRow([
                     '', '', '', "TOTAL",
-                    { formula: `SUM(E${chunkDataStartRow}:E${chunkDataEndRow})` }, // Sqft
-                    { formula: `SUM(F${chunkDataStartRow}:F${chunkDataEndRow})` }, // 张数
+                    { formula: `SUM(E${chunkDataStartRow}:E${chunkDataEndRow})` }, // 张数
+                    { formula: `SUM(F${chunkDataStartRow}:F${chunkDataEndRow})` }, // Sqft
                     { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` }, // NW
                     { formula: `SUM(H${chunkDataStartRow}:H${chunkDataEndRow})` }, // GW
                     { formula: `SUM(I${chunkDataStartRow}:I${chunkDataEndRow})` }, // CBM
@@ -227,8 +227,8 @@ class ExcelExporter {
         if (inputMode === 'sqft-pcs-gross-cbm') {
             grandTotalRow = worksheet.addRow([
                 '', '', '', "GRAND TOTAL",
-                createSumFormula('E'), // Sqft
-                createSumFormula('F'), // Pieces (张数)
+                createSumFormula('E'), // Pieces (张数)
+                createSumFormula('F'), // Sqft
                 createSumFormula('G'), // Net Weight
                 createSumFormula('H'), // Gross Weight  
                 createSumFormula('I'), // CBM

@@ -39,7 +39,7 @@ class Utils {
                     { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, 
                     { width: 15 }, { width: 12 }, { width: 15 }
                 ],
-                headerLabels: ["产品名称", "ITEM NO.", "PO NO.", "托数", "Sqft", "张数", "NW", "GW", "CBM", "Unit Price", "Total"]
+                headerLabels: ["产品名称", "ITEM NO.", "PO NO.", "托数", "张数", "Sqft", "NW", "GW", "CBM", "Unit Price", "Total"]
             };
         } else if (inputMode === 'pcs-gross-cbm') {
             return {
