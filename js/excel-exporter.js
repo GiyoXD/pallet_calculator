@@ -132,20 +132,17 @@ class ExcelExporter {
             const sqft = pallet.sqft || '';
             return [
                 "wet blue split", "split hide", config.poNumber || '',
-                sqft,
-                pcs,
                 `${palletNumber}-${grandTotalPallet}`,
-                netWt, grossWt, pcs, finalCbm, unitPrice, 
-                { formula: `G${currentRowNumber}*K${currentRowNumber}` } // Net Weight * Unit Price
+                sqft, pcs, netWt, grossWt, finalCbm, unitPrice, 
+                { formula: `G${currentRowNumber}*J${currentRowNumber}` } // Net Weight * Unit Price
             ];
         } else if (inputMode === 'pcs-gross-cbm') {
             const pcs = Utils.parseNumber(pallet.pcs);
             return [
                 "wet blue split", "split hide", config.poNumber || '',
-                pcs,
                 `${palletNumber}-${grandTotalPallet}`,
-                netWt, grossWt, pcs, finalCbm, unitPrice, 
-                { formula: `F${currentRowNumber}*J${currentRowNumber}` } // Net Weight * Unit Price
+                pcs, netWt, grossWt, finalCbm, unitPrice, 
+                { formula: `F${currentRowNumber}*I${currentRowNumber}` } // Net Weight * Unit Price
             ];
         } else {
             return [
@@ -161,50 +158,42 @@ class ExcelExporter {
         const chunkDataEndRow = worksheet.lastRow.number;
         if (chunkDataEndRow >= chunkDataStartRow) {
             let totalRow;
-            if (chunk.config.inputMode === 'sqft-pcs-gross-cbm') {
+            const inputMode = chunk.config.inputMode || 'gross-cbm';
+            
+            if (inputMode === 'sqft-pcs-gross-cbm') {
                 totalRow = worksheet.addRow([
-                    '', '', '', '', '', "TOTAL",
-                    { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` },
-                    { formula: `SUM(H${chunkDataStartRow}:H${chunkDataEndRow})` },
-                    { formula: `SUM(I${chunkDataStartRow}:I${chunkDataEndRow})` },
-                    { formula: `SUM(J${chunkDataStartRow}:J${chunkDataEndRow})` },
+                    '', '', '', "TOTAL",
+                    { formula: `SUM(E${chunkDataStartRow}:E${chunkDataEndRow})` }, // Sqft
+                    { formula: `SUM(F${chunkDataStartRow}:F${chunkDataEndRow})` }, // 张数
+                    { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` }, // NW
+                    { formula: `SUM(H${chunkDataStartRow}:H${chunkDataEndRow})` }, // GW
+                    { formula: `SUM(I${chunkDataStartRow}:I${chunkDataEndRow})` }, // CBM
                     '', // Empty cell with border for Unit Price column
-                    { formula: `SUM(L${chunkDataStartRow}:L${chunkDataEndRow})` }
+                    { formula: `SUM(K${chunkDataStartRow}:K${chunkDataEndRow})` }  // Total
                 ]);
-            } else if (chunk.config.inputMode === 'pcs-gross-cbm') {
+            } else if (inputMode === 'pcs-gross-cbm') {
                 totalRow = worksheet.addRow([
-                    '', '', '', '', "TOTAL",
-                    { formula: `SUM(F${chunkDataStartRow}:F${chunkDataEndRow})` },
-                    { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` },
-                    { formula: `SUM(H${chunkDataStartRow}:H${chunkDataEndRow})` },
-                    { formula: `SUM(I${chunkDataStartRow}:I${chunkDataEndRow})` },
+                    '', '', '', "TOTAL",
+                    { formula: `SUM(E${chunkDataStartRow}:E${chunkDataEndRow})` }, // 张数
+                    { formula: `SUM(F${chunkDataStartRow}:F${chunkDataEndRow})` }, // NW
+                    { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` }, // GW
+                    { formula: `SUM(H${chunkDataStartRow}:H${chunkDataEndRow})` }, // CBM
                     '', // Empty cell with border for Unit Price column
-                    { formula: `SUM(K${chunkDataStartRow}:K${chunkDataEndRow})` }
+                    { formula: `SUM(J${chunkDataStartRow}:J${chunkDataEndRow})` }  // Total
                 ]);
             } else {
                 totalRow = worksheet.addRow([
                     '', '', '', "TOTAL",
-                    { formula: `SUM(E${chunkDataStartRow}:E${chunkDataEndRow})` },
-                    { formula: `SUM(F${chunkDataStartRow}:F${chunkDataEndRow})` },
-                    { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` },
+                    { formula: `SUM(E${chunkDataStartRow}:E${chunkDataEndRow})` }, // NW
+                    { formula: `SUM(F${chunkDataStartRow}:F${chunkDataEndRow})` }, // GW
+                    { formula: `SUM(G${chunkDataStartRow}:G${chunkDataEndRow})` }, // CBM
                     '', // Empty cell with border for Unit Price column
-                    { formula: `SUM(I${chunkDataStartRow}:I${chunkDataEndRow})` }
+                    { formula: `SUM(I${chunkDataStartRow}:I${chunkDataEndRow})` }  // Total
                 ]);
             }
             totalRow.eachCell((cell, colNumber) => {
-                // Apply borders only to numerical columns and TOTAL label
-                let shouldHaveBorder = false;
-                
-                if (chunk.config.inputMode === 'sqft-pcs-gross-cbm') {
-                    // Columns: 产品名称, ITEM NO., PO NO., Sqft, PCS, 托数, NW, GW, 张数, CBM, Unit Price, Total
-                    shouldHaveBorder = colNumber >= 4; // Sqft onwards (columns 4-12)
-                } else if (chunk.config.inputMode === 'pcs-gross-cbm') {
-                    // Columns: 产品名称, ITEM NO., PO NO., PCS, 托数, NW, GW, 张数, CBM, Unit Price, Total
-                    shouldHaveBorder = colNumber >= 4; // PCS onwards (columns 4-11)
-                } else {
-                    // Columns: 产品名称, ITEM NO., PO NO., 托数, NW, GW, CBM, Unit Price, Total
-                    shouldHaveBorder = colNumber >= 4; // 托数 onwards (columns 4-9)
-                }
+                // Apply borders from '托数' (column D, index 4) onwards
+                const shouldHaveBorder = colNumber >= 4;
                 
                 if (shouldHaveBorder) {
                     Object.assign(cell, tableCellStyle);
@@ -237,23 +226,24 @@ class ExcelExporter {
         
         if (inputMode === 'sqft-pcs-gross-cbm') {
             grandTotalRow = worksheet.addRow([
-                '', '', '', '', '', "GRAND TOTAL",
+                '', '', '', "GRAND TOTAL",
+                createSumFormula('E'), // Sqft
+                createSumFormula('F'), // Pieces (张数)
                 createSumFormula('G'), // Net Weight
                 createSumFormula('H'), // Gross Weight  
-                createSumFormula('I'), // Pieces
-                createSumFormula('J'), // CBM
-                '', // Empty cell with border for Unit Price column
-                createSumFormula('L')  // Total Amount
-            ]);
-        } else if (inputMode === 'pcs-gross-cbm') {
-            grandTotalRow = worksheet.addRow([
-                '', '', '', '', "GRAND TOTAL",
-                createSumFormula('F'), // Net Weight
-                createSumFormula('G'), // Gross Weight
-                createSumFormula('H'), // Pieces
                 createSumFormula('I'), // CBM
                 '', // Empty cell with border for Unit Price column
                 createSumFormula('K')  // Total Amount
+            ]);
+        } else if (inputMode === 'pcs-gross-cbm') {
+            grandTotalRow = worksheet.addRow([
+                '', '', '', "GRAND TOTAL",
+                createSumFormula('E'), // Pieces (张数)
+                createSumFormula('F'), // Net Weight
+                createSumFormula('G'), // Gross Weight
+                createSumFormula('H'), // CBM
+                '', // Empty cell with border for Unit Price column
+                createSumFormula('J')  // Total Amount
             ]);
         } else {
             grandTotalRow = worksheet.addRow([
@@ -267,19 +257,8 @@ class ExcelExporter {
         }
         
         grandTotalRow.eachCell((cell, colNumber) => {
-            // Apply borders only to numerical columns and GRAND TOTAL label
-            let shouldHaveBorder = false;
-            
-            if (inputMode === 'sqft-pcs-gross-cbm') {
-                // Columns: 产品名称, ITEM NO., PO NO., Sqft, PCS, 托数, NW, GW, 张数, CBM, Unit Price, Total
-                shouldHaveBorder = colNumber >= 4; // Sqft onwards (columns 4-12)
-            } else if (inputMode === 'pcs-gross-cbm') {
-                // Columns: 产品名称, ITEM NO., PO NO., PCS, 托数, NW, GW, 张数, CBM, Unit Price, Total
-                shouldHaveBorder = colNumber >= 4; // PCS onwards (columns 4-11)
-            } else {
-                // Columns: 产品名称, ITEM NO., PO NO., 托数, NW, GW, CBM, Unit Price, Total
-                shouldHaveBorder = colNumber >= 4; // 托数 onwards (columns 4-9)
-            }
+            // Apply borders from '托数' (column D, index 4) onwards
+            const shouldHaveBorder = colNumber >= 4;
             
             if (shouldHaveBorder) {
                 Object.assign(cell, tableCellStyle);
